@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brislane PLC — Quality Console · Project Keystone</title>
+<style>:root{
+  --bg:#0e1525; --panel:#131d33; --panel2:#0b1322; --line:#26334e;
+  --ink:#e8eefb; --muted:#8c9ab6;
+  --accent:#f5a623; --cyan:#3fb6f0;
+  --red:#ef5a5a; --amber:#f5a623; --green:#3ecf8e;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;
+  font-size:15px;-webkit-font-smoothing:antialiased}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* ---- incident header (signature) ---- */
+.banner{border-bottom:1px solid var(--line);background:
+   linear-gradient(180deg,#0c1730, #0b1322);position:relative;overflow:hidden}
+.banner::before{content:"";position:absolute;inset:0;
+   background:repeating-linear-gradient(90deg,transparent 0 38px,rgba(63,182,240,.025) 38px 39px);
+   pointer-events:none}
+.banner .wrap{padding:20px 20px 22px;position:relative}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.title-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-top:6px}
+h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.01em}
+h1 b{color:var(--accent)}
+.status-strip{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center}
+.chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border:1px solid var(--line);
+   border-radius:999px;display:inline-flex;gap:7px;align-items:center;background:var(--panel2)}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.red{background:var(--red);box-shadow:0 0 0 3px rgba(239,90,90,.18)}
+.dot.amber{background:var(--amber)}
+.count{font-family:var(--mono);color:var(--accent);font-weight:700}
+
+/* ---- tabs ---- */
+nav.tabs{position:sticky;top:0;z-index:5;background:rgba(11,19,34,.92);
+   backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto}
+.tabbtn{font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--muted);
+   background:none;border:0;border-bottom:2px solid transparent;padding:13px 14px;cursor:pointer;white-space:nowrap}
+.tabbtn:hover{color:var(--ink)}
+.tabbtn[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tabbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px;border-radius:4px}
+
+section.panel{display:none;padding:30px 0 70px}
+section.panel.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){section.panel.active{animation:none}*{scroll-behavior:auto}}
+
+h2{font-size:13px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
+   color:var(--muted);margin:34px 0 14px;font-weight:600}
+h2:first-child{margin-top:0}
+h3{font-size:17px;margin:0 0 6px}
+p{margin:0 0 12px;color:#d6deee}
+.lead{font-size:16px;color:#d9e2f3;max-width:70ch}
+
+/* metric cards */
+.grid{display:grid;gap:14px}
+.metrics{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card .v{font-size:28px;font-weight:700;margin:8px 0 2px;font-family:var(--mono)}
+.card .v.red{color:var(--red)} .card .v.amber{color:var(--amber)}
+.card .sub{font-size:12.5px;color:var(--muted)}
+.rag{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+
+/* timeline */
+.tl{border-left:2px solid var(--line);margin-left:6px;padding-left:18px}
+.tl li{list-style:none;margin:0 0 14px;position:relative}
+.tl li::before{content:"";position:absolute;left:-25px;top:5px;width:10px;height:10px;border-radius:50%;
+   background:var(--panel);border:2px solid var(--cyan)}
+.tl li.crit::before{border-color:var(--accent);background:var(--accent)}
+.tl .d{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.tl ul{padding:0;margin:0}
+
+/* team */
+.team{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.who{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+.who .nm{font-weight:700} .who .ro{font-family:var(--mono);font-size:12px;color:var(--cyan);margin:2px 0 8px}
+.who .pr{font-size:13.5px;color:var(--muted)}
+.who.gate{border-color:#5b4a1f}
+
+/* data toolbar + table */
+.subtabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.subtab{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:var(--panel2);
+  border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.subtab[aria-selected="true"]{color:var(--ink);border-color:var(--cyan)}
+.dataset{display:none} .dataset.active{display:block}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 12px}
+.search{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);font-family:var(--mono);font-size:13px;padding:9px 12px}
+.search:focus{outline:2px solid var(--cyan);outline-offset:1px}
+.btn{font-family:var(--mono);font-size:13px;color:#0c1322;background:var(--accent);border:0;
+  border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:700}
+.btn:hover{filter:brightness(1.07)} .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line);font-weight:500}
+.rowcount{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.note{background:#15203a;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:11px 14px;font-size:13.5px;color:#cdd8ee;margin:0 0 14px}
+.tablewrap{border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:62vh}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px}
+thead th{position:sticky;top:0;background:#0d1830;color:var(--cyan);text-align:left;
+  padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:1}
+tbody td{padding:8px 12px;border-bottom:1px solid #1a2540;color:#cfd9ee;white-space:nowrap}
+tbody tr:hover{background:#15203a}
+
+/* glossary */
+.gloss{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.gtable{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gtable .h{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.gtable dl{margin:0;padding:6px 0}
+.gtable .row{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:7px 14px;border-bottom:1px solid #1a2540}
+.gtable .row:last-child{border-bottom:0}
+.gtable code{font-family:var(--mono);color:var(--accent);font-size:12.5px}
+.gtable .def{font-size:13px;color:#cfd9ee}
+
+/* downloads */
+.dl{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.file{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+  display:flex;flex-direction:column;gap:10px}
+.file .fn{font-family:var(--mono);font-size:13.5px;color:var(--ink)}
+.file .fd{font-size:12.5px;color:var(--muted);flex:1}
+.file.soon{opacity:.55}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted);align-self:flex-start}
+
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:12px;font-family:var(--mono)}
+footer .wrap{padding:18px 20px}
+/* ---- handover doc view ---- */
+.doc{max-width:82ch}
+.doc h2{font-size:22px;font-family:var(--sans);text-transform:none;letter-spacing:-.01em;color:var(--ink);margin:0 0 14px;font-weight:700}
+.doc h3{font-size:13px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);margin:30px 0 12px;font-weight:600}
+.doc h4{font-size:15px;color:var(--ink);margin:20px 0 6px;font-weight:700}
+.doc p{color:#d4ddef;margin:0 0 13px}
+.doc ul,.doc ol{margin:0 0 15px;padding-left:22px;color:#d4ddef}
+.doc li{margin:0 0 7px}
+.doc code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:var(--accent)}
+.doc hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+.doc strong{color:var(--ink)}
+.mk{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.03em;padding:1px 7px;border-radius:5px;white-space:nowrap;display:inline-block}
+.mk.nd{background:rgba(239,90,90,.14);color:#ff8585;border:1px solid rgba(239,90,90,.35)}
+.mk.ck{background:rgba(245,166,35,.14);color:var(--accent);border:1px solid rgba(245,166,35,.35)}
+.mk.dep{background:#1a2540;color:var(--muted);border:1px solid var(--line)}
+.docnote{background:#2a1c1c;border:1px solid #5b2b2b;border-left:3px solid var(--red);border-radius:8px;padding:12px 14px;color:#f0cfcf;font-size:13.5px;margin:0 0 20px}
+</style></head><body>
+
+<header class="banner"><div class="wrap">
+  <div class="tag">Brislane PLC &middot; Engineering &middot; Quality Console</div>
+  <div class="title-row"><h1>Project <b>Keystone</b> — Quality Workstream</h1></div>
+  <div class="status-strip">
+    <span class="chip"><span class="dot red"></span>Release status: RED</span>
+    <span class="chip"><span class="dot amber"></span>Quality: under investigation</span>
+    <span class="chip">Go-live <b>&nbsp;28 Aug 2026</b></span>
+    <span class="chip">T&minus;<span class="count" id="countdown">&hellip;</span></span>
+    <span class="chip">Owner: Senior Quality Engineer (you)</span>
+      <a class="chip" href="https://github.com/alain-Sortnext/brislane-lending-platform" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">⑂ starter repo ↗</a>
+  </div>
+</div></header>
+
+<nav class="tabs" role="tablist"><div class="wrap">
+  <button class="tabbtn" role="tab" aria-selected="true" data-tab="overview">overview</button>
+  <button class="tabbtn" role="tab" aria-selected="false" data-tab="data">data&nbsp;files</button>
+  <button class="tabbtn" role="tab" aria-selected="false" data-tab="handover">handover</button>
+  <button class="tabbtn" role="tab" aria-selected="false" data-tab="glossary">glossary</button>
+  <button class="tabbtn" role="tab" aria-selected="false" data-tab="downloads">downloads</button>
+</div></nav>
+
+<section class="panel active" id="overview"><div class="wrap">
+  <p class="lead">You have joined Brislane PLC as Senior Quality Engineer to lead the quality workstream for
+  <b>Project Keystone</b> — the biggest platform release in two years, live in eight weeks. Quality is not under
+  control. Your job is to take it from red to a defensible Go / No-Go decision, with evidence.</p>
+  <h2>Where we are vs where we need to be</h2>
+  <div class="grid metrics">
+    <div class="card"><div class="k">Loan completion</div><div class="v red">~64%</div>
+      <div class="sub"><span class="rag" style="background:var(--red)"></span>down from ~82% &middot; target &ge; 90%</div></div>
+    <div class="card"><div class="k">Automated pass rate</div><div class="v red">~78%</div>
+      <div class="sub"><span class="rag" style="background:var(--red)"></span>flaky &middot; target &gt; 95%</div></div>
+    <div class="card"><div class="k">Defect leakage</div><div class="v red">~32%</div>
+      <div class="sub"><span class="rag" style="background:var(--red)"></span>escapes to prod &middot; target &lt; 10%</div></div>
+    <div class="card"><div class="k">Cost of the gap</div><div class="v amber">£300k+</div>
+      <div class="sub">per month in lost originations</div></div>
+  </div>
+  <div class="note">Something changed around <b>Week 9</b> of the 12-week reporting window. Completion fell sharply
+  and hasn&rsquo;t recovered. Nobody yet agrees on why — don&rsquo;t assume. The data files will tell you.</div>
+  <h2>Project Keystone timeline</h2>
+  <ul class="tl">
+    <li><div class="d">Mon 6 Jul 2026</div><div>Programme kickoff — your start</div></li>
+    <li><div class="d">Sprint 1 &middot; 6–17 Jul</div><div>Discovery, strategy, API &amp; data quality</div></li>
+    <li><div class="d">Sprint 2 &middot; 20–31 Jul</div><div>Defect hunt, RCA, framework engineering</div></li>
+    <li><div class="d">Sprint 3 &middot; 3–14 Aug</div><div>Automation, accessibility, cross-browser</div></li>
+    <li><div class="d">Sprint 4 &middot; 17–28 Aug</div><div>CI/CD, quality gates, release readiness</div></li>
+    <li class="crit"><div class="d">Wed 19 Aug</div><div>Code freeze</div></li>
+    <li class="crit"><div class="d">Thu 27 Aug</div><div>Go / No-Go release board</div></li>
+    <li class="crit"><div class="d">Fri 28 Aug</div><div>Keystone go-live</div></li>
+  </ul>
+  <h2>Who you work with</h2>
+  <div class="grid team">
+    <div class="who"><div class="nm">Priya Nair</div><div class="ro">Director of Engineering &middot; your manager</div>
+      <div class="pr">Owns delivery, answers to the board. Wants quality to enable the release, not block it. Will push you on timeline.</div></div>
+    <div class="who"><div class="nm">Tom Whitfield</div><div class="ro">Senior QA Engineer &middot; outgoing</div>
+      <div class="pr">Built the current framework, leaves end of Sprint 1. Honest the handover is incomplete. Has theories he never chased.</div></div>
+    <div class="who"><div class="nm">Sandra Okoye</div><div class="ro">Platform / SRE &middot; data &amp; environments</div>
+      <div class="pr">Owns environments, API gateway, logs and database access. Provides your data — ask the right questions.</div></div>
+    <div class="who gate"><div class="nm">David Mensah</div><div class="ro">Head of Compliance &amp; Risk &middot; gate</div>
+      <div class="pr">Hard FCA requirements that must be in scope and tested, or the release cannot proceed. Will escalate.</div></div>
+    <div class="who"><div class="nm">Marcus Reed</div><div class="ro">Product Director &middot; release board</div>
+      <div class="pr">Wants Keystone live on 28 Aug. Will argue to ship with known issues.</div></div>
+    <div class="who"><div class="nm">Lena Fischer</div><div class="ro">Customer Success Lead &middot; release board</div>
+      <div class="pr">Sees the support queue daily; complaints rising. Wants the journey fixed before more customers are hit.</div></div>
+  </div>
+</div></section>
+
+<section class="panel" id="data"><div class="wrap">
+  <div class="subtabs" role="tablist"><button class="subtab" role="tab" aria-selected="true" data-ds="primary">funnel_data &middot; 12 weeks</button><button class="subtab" role="tab" aria-selected="false" data-ds="secondary">support_tickets &middot; 90 days</button><button class="subtab" role="tab" aria-selected="false" data-ds="operational">api_error_log &middot; 12 weeks</button></div>
+    <div class="dataset active" id="ds-primary">
+      <h3>Loan application funnel — weekly by channel</h3>
+      <p class="lead">Where in the journey are applications being lost, and when did it change? Stages run APP_START &rarr; ID_VERIF &rarr; DOC_UP &rarr; AFF_CHK &rarr; CR_DEC &rarr; SUBMIT &rarr; FUND (see Glossary).</p>
+      <div class="note">This is real inherited operational data. Expect gaps, inconsistent formats and the odd anomaly. Decide what you can trust and state your assumptions before drawing conclusions.</div>
+      <div class="toolbar">
+        <input class="search" data-for="primary" placeholder="filter rows&hellip; e.g. 2026-06 or BROKER">
+        <span class="rowcount" id="rc-primary"></span>
+        <button class="btn" data-dl="primary">Download CSV</button>
+      </div>
+      <div class="tablewrap" id="tbl-primary"></div>
+    </div>
+    <div class="dataset" id="ds-secondary">
+      <h3>Customer support tickets</h3>
+      <p class="lead">The customer&rsquo;s-eye view of the same problem. What are people contacting us about, how has it shifted, and what do the descriptions actually say?</p>
+      <div class="note">Tickets arrive unordered and messy: free-text descriptions, inconsistent category labels and missing satisfaction scores. Read the text, not just the category counts.</div>
+      <div class="toolbar">
+        <input class="search" data-for="secondary" placeholder="filter rows&hellip; e.g. submission or session">
+        <span class="rowcount" id="rc-secondary"></span>
+        <button class="btn" data-dl="secondary">Download CSV</button>
+      </div>
+      <div class="tablewrap" id="tbl-secondary"></div>
+    </div>
+    <div class="dataset" id="ds-operational">
+      <h3>API error log — weekly by endpoint</h3>
+      <p class="lead">The platform&rsquo;s-eye view: every loan-journey API endpoint, its call volume, and the breakdown of why calls failed. This is the &ldquo;why&rdquo; behind the funnel.</p>
+      <div class="note">SRE export. Failure codes are internal shorthand (see Glossary). Fail-rate formatting is inconsistent and one week is still being reconciled. The cause of the drop is in here — if you cross-reference it.</div>
+      <div class="toolbar">
+        <input class="search" data-for="operational" placeholder="filter rows&hellip; e.g. /loans/submit or token_exp">
+        <span class="rowcount" id="rc-operational"></span>
+        <button class="btn" data-dl="operational">Download CSV</button>
+      </div>
+      <div class="tablewrap" id="tbl-operational"></div>
+    </div>
+</div></section>
+
+<section class="panel" id="handover"><div class="wrap">
+  <div class="doc"><h2>QA HANDOVER NOTES</h2>
+<p><strong>Author:</strong> Tom Whitfield, Senior QA Engineer (outgoing) <strong>For:</strong> Incoming Senior Quality Engineer <strong>Last day:</strong> Friday 17 July 2026 (end of Sprint 1) <strong>Status:</strong> ⚠️ INCOMPLETE — written in a rush before I leave. I&#x27;ve documented what I could. The gaps below are real, not laziness — they&#x27;re the bits nobody ever had time to do. Sorry. Where I&#x27;ve written <span class="mk ck">CHECK THIS</span>, <span class="mk nd">NOT DOCUMENTED</span> or <span class="mk dep">DEPRECATED?</span>, that&#x27;s me being honest about what I don&#x27;t trust.</p>
+<hr>
+<h3>1. The honest state of things</h3>
+<p>You&#x27;re inheriting a quality setup that grew under deadline pressure and never got cleaned up. Before you trust anything, assume it&#x27;s wrong until you&#x27;ve checked it. The headline problems:</p>
+<ul><li>The Playwright framework (<code>brislane-lending-platform</code>) is flaky and slow. People stopped trusting it months ago and started merging on red.</li><li>CI is currently <strong>failing</strong> on main and has been amber/red for weeks. <span class="mk nd">NOT DOCUMENTED</span> why it started failing — see section 4.</li><li>Test coverage of the loan journey is patchy. The early stages are covered; the later stages (the important ones) are mostly manual or not covered at all.</li><li>The Postman collection is out of date and the auth is set up wrong (see section 5).</li><li>There are <strong>no quality metrics</strong>. Nobody can tell you the real pass rate, defect leakage or coverage. Leadership has been guessing.</li></ul>
+<hr>
+<h3>2. The loan journey — test process by stage</h3>
+<p>The journey is: <code>APP_START</code> → <code>ID_VERIF</code> → <code>DOC_UP</code> → <code>AFF_CHK</code> → <code>CR_DEC</code> → <code>SUBMIT</code> → <code>FUND</code>.</p>
+<p>I only ever fully documented the front half. Here&#x27;s the truth stage by stage:</p>
+<h4>Stage 1 — APP_START (application started)</h4>
+<p>Documented. Smoke test exists (<code>tests/loan/start.spec.ts</code>). Stable. Reasonable selectors.</p>
+<h4>Stage 2 — ID_VERIF (identity / KYC)</h4>
+<p>Documented. Uses a sandbox KYC provider in DEV/QA. Test data in <code>test-data/kyc/</code>. Works but slow — there&#x27;s a hardcoded <code>waitForTimeout(5000)</code> in there I&#x27;m not proud of. <span class="mk ck">CHECK THIS</span> — that wait is a big source of flakiness.</p>
+<h4>Stage 3 — DOC_UP (document upload)</h4>
+<p>Partially documented. Upload works in QA. There&#x27;s a known issue where the upload spinner sometimes never resolves on WebKit — I logged it but never root-caused it. The automation for this stage uses a duplicated selector that also exists in the payments page object. <span class="mk dep">DEPRECATED?</span> — I think <code>OldUploadPage.ts</code> is dead but I&#x27;m not certain; grep before you delete.</p>
+<h4>Stage 4 — AFF_CHK (affordability check)</h4>
+<p><strong><span class="mk nd">NOT DOCUMENTED</span>.</strong> There&#x27;s no automated coverage. I tested this manually. The business rules for affordability live in someone&#x27;s head (probably Product). You&#x27;ll need to get these written down — they&#x27;re a compliance-relevant control.</p>
+<h4>Stage 5 — CR_DEC (credit decision)</h4>
+<p><strong><span class="mk nd">NOT DOCUMENTED</span>.</strong> No coverage. This calls an external credit bureau in UAT only — it&#x27;s mocked nowhere, which is why we can&#x27;t test it reliably below UAT. <span class="mk ck">CHECK THIS</span> — mocking this is probably your biggest framework job.</p>
+<h4>Stage 6 — SUBMIT (final submission)</h4>
+<p><strong><span class="mk nd">NOT DOCUMENTED</span> and this is the one that&#x27;s on fire.</strong> Submit failures have been climbing and I never got to the bottom of it. There&#x27;s a half-written spec (<code>tests/loan/submit.spec.ts.skip</code>) that&#x27;s been skipped for two sprints because it&#x27;s flaky. See section 7 — this is my unfinished business and probably yours on day one.</p>
+<h4>Stage 7 — FUND (funding / approval)</h4>
+<p><strong><span class="mk nd">NOT DOCUMENTED</span>.</strong> No coverage at all. Funding writes to the ledger and the audit log. Compliance care about the audit log a lot (David will tell you). Nobody validates it today. <span class="mk ck">CHECK THIS</span> against the database.</p>
+<hr>
+<h3>3. Test data</h3>
+<ul><li>Seed scripts live in <code>test-data/</code> but they&#x27;re inconsistent — some are SQL, some are JSON fixtures loaded by a script that may or may not still work. <span class="mk dep">DEPRECATED?</span> — <code>seed_legacy.sql</code> predates the current schema; do not run it against QA.</li><li>We do <strong>not</strong> use anonymised production data (good — keep it that way, David is strict on UK GDPR).</li><li><span class="mk nd">NOT DOCUMENTED</span> — there&#x27;s no documented &quot;known good&quot; customer set for end-to-end runs. You&#x27;ll want to build one.</li></ul>
+<hr>
+<h3>4. The automation framework (<code>brislane-lending-platform</code>)</h3>
+<p>What&#x27;s there:</p>
+<ul><li><code>playwright.config.ts</code>, <code>src/pages/</code> (page objects), <code>tests/</code>, <code>api/</code>, <code>fixtures/</code>, <code>utils/</code>, <code>test-data/</code>, <code>.github/workflows/</code>.</li></ul>
+<p>What&#x27;s wrong (the stuff you&#x27;ll refactor in the framework phase):</p>
+<ul><li><strong>Hardcoded waits</strong> everywhere (<code>waitForTimeout</code>) instead of proper auto-waiting. Main flakiness driver.</li><li><strong>Duplicate selectors</strong> across page objects (login + payments share copy-pasted locators).</li><li><strong>Broken assertions</strong> — some specs assert on stale text and pass for the wrong reason.</li><li><strong>Flaky tests</strong> — submit + upload specs fail intermittently; people retry until green.</li><li><strong>Poor naming</strong> — <code>test1.spec.ts</code>, <code>newtest.spec.ts</code>, you get the idea.</li><li><strong>Missing fixtures</strong> — auth state is re-created per test by logging in through the UI every time (slow, and ironically relevant to the submit problem — see section 7).</li><li><strong>Weak Page Object design</strong> — pages expose raw locators, no encapsulation.</li><li><strong>Unused code / duplicate utilities</strong> — two date helpers, one unused logger. <span class="mk dep">DEPRECATED?</span> throughout <code>utils/</code>.</li><li><strong>Failing CI</strong> — <code>.github/workflows/ci.yml</code> is red. <span class="mk nd">NOT DOCUMENTED</span> exactly why it broke; it started after a dependency bump. No quality gates configured.</li></ul>
+<hr>
+<h3>5. APIs / Postman</h3>
+<ul><li>The collection (<code>postman_collection.json</code>) covers Auth, Customers, Loans, Payments, Notifications but it&#x27;s stale.</li><li>Auth is set up wrong — the collection hardcodes a bearer token that&#x27;s long expired, so half the requests 401 out of the box. <span class="mk ck">CHECK THIS</span> — needs a proper login request + token variable.</li><li>There&#x27;s <strong>no negative testing</strong> and <strong>no contract validation</strong>. Status codes aren&#x27;t asserted.</li><li>Compliance-relevant: there&#x27;s no test that an expired or tampered token is correctly rejected, and nothing exercising SCA on payments. David will flag this hard — get it into scope.</li><li><span class="mk nd">NOT DOCUMENTED</span> — rate limiting behaviour. We think <code>/loans/submit</code> and <code>/payments</code> are rate limited (429) but nobody&#x27;s confirmed the thresholds.</li></ul>
+<hr>
+<h3>6. Environments</h3>
+<ul><li>We run <strong>DEV</strong>, <strong>QA</strong> and <strong>UAT</strong>. Config is currently scattered across <code>.env</code> files that aren&#x27;t all committed (some live on my laptop — sorry, Sandra has copies).</li><li><span class="mk nd">NOT DOCUMENTED</span> — the full list of secrets/variables per environment. Sandra (SRE) is your source of truth. Get her to walk you through the gateway and the auth service config.</li><li>UAT is the only env wired to the real credit bureau. DEV/QA mock it inconsistently. <span class="mk ck">CHECK THIS</span>.</li></ul>
+<hr>
+<h3>7. The thing I never got to (my hunch — please chase this)</h3>
+<p>This is the one that&#x27;s been bugging me. <strong>Submit failures started climbing around early-to-mid June</strong> and they never came back down. At the same time, customer complaints about &quot;the page failing when I submit&quot; and &quot;getting logged out&quot; went up.</p>
+<p>Here&#x27;s my unproven theory, for what it&#x27;s worth:</p>
+<ul><li>The auth team shipped a release to the authentication service around <strong>8 June</strong> — the deploy reference I saw in the logs was <strong><code>AUTH-SVC 2.4.0</code></strong>. I&#x27;m fairly sure it changed the access-token lifetime (TTL).</li><li>The loan application is a *long* form. My hunch is that on the slower journeys the token is <strong>expiring before the user reaches submit</strong>, so <code>/loans/submit</code> 401s, and the UI shows a generic &quot;submission failed&quot; error — which looks like an upload or form problem but isn&#x27;t.</li><li>I never proved it. I was buried in release work. <strong><span class="mk ck">CHECK THIS</span></strong> — cross-reference the API error log (<code>brislane_operational_report.csv</code>) against the funnel (<code>brislane_primary_data.csv</code>) and the support tickets (<code>brislane_secondary_data.csv</code>), and look at what kind of failure dominates <code>/loans/submit</code> after that deploy. If I&#x27;m right it&#x27;s an auth/session issue, not a UX one. If I&#x27;m wrong, ignore me — but the data should settle it either way.</li></ul>
+<p>Either way: don&#x27;t take my word for it. Prove it with the numbers.</p>
+<hr>
+<h3>8. Open questions (for you and the team)</h3>
+<ol><li>Why exactly did CI start failing on main, and when? (<span class="mk nd">NOT DOCUMENTED</span>)</li><li>What are the documented affordability (<code>AFF_CHK</code>) business rules? Who owns them?</li><li>Can <code>CR_DEC</code> (credit bureau) be mocked so we can test below UAT?</li><li>What are the real rate-limit thresholds on <code>/loans/submit</code> and <code>/payments</code>?</li><li>Is the funding (<code>FUND</code>) audit log actually complete and immutable? (Compliance question)</li><li>What&#x27;s the *real* automation pass rate and defect leakage? Nobody has a number.</li><li>Is <code>OldUploadPage.ts</code> / <code>seed_legacy.sql</code> dead code? (<span class="mk dep">DEPRECATED?</span>)</li><li>Did the <code>AUTH-SVC 2.4.0</code> deploy change the token TTL — and was the long-form journey ever re-tested against it?</li></ol>
+<hr>
+<h3>9. Contacts — who to ask for what</h3>
+<ul><li><strong>Priya Nair</strong> — Director of Engineering, your manager. Delivery, priorities, anything that affects the 28 Aug date. She&#x27;ll push back on scope; bring evidence.</li><li><strong>Sandra Okoye</strong> — Platform / SRE. Environments, the API gateway, the auth service config, database access, logs. She has the <code>.env</code> files and knows what <code>AUTH-SVC 2.4.0</code> actually changed. Talk to her first.</li><li><strong>David Mensah</strong> — Head of Compliance &amp; Risk. FCA Consumer Duty, SCA/PSD2, token/session controls, audit-trail integrity, UK GDPR. He sets hard requirements your scope must cover.</li><li><strong>Marcus Reed</strong> — Product Director. Owns the business rules that aren&#x27;t written down (affordability, eligibility). Wants to ship.</li><li><strong>Lena Fischer</strong> — Customer Success. Has the real complaint data and can tell you what customers actually experience at submit.</li></ul>
+<hr>
+<p>Good luck. It&#x27;s a mess but it&#x27;s a fixable mess, and the data is honest even when the process isn&#x27;t. Start with the submit problem — that&#x27;s where the money is leaking.</p>
+<p>— Tom</p></div>
+</div></section>
+
+<section class="panel" id="glossary"><div class="wrap">
+  <p class="lead">Internal shorthand used across the funnel data, support logs and the operational reports.</p>
+  <div class="grid gloss">
+    <div class="gtable"><div class="h">Loan journey stages</div>
+      <div class="row"><code>APP_START</code><div class="def">Application started</div></div>
+      <div class="row"><code>ID_VERIF</code><div class="def">Identity verification (KYC)</div></div>
+      <div class="row"><code>DOC_UP</code><div class="def">Document upload</div></div>
+      <div class="row"><code>AFF_CHK</code><div class="def">Affordability check</div></div>
+      <div class="row"><code>CR_DEC</code><div class="def">Credit decision</div></div>
+      <div class="row"><code>SUBMIT</code><div class="def">Final application submission</div></div>
+      <div class="row"><code>FUND</code><div class="def">Loan funded / approved</div></div></div>
+    <div class="gtable"><div class="h">API result &amp; error codes</div>
+      <div class="row"><code>OK_200</code><div class="def">Successful request</div></div>
+      <div class="row"><code>AUTH_401</code><div class="def">Unauthorized — auth/session failure</div></div>
+      <div class="row"><code>TOKEN_EXP</code><div class="def">JWT access token expired (a cause of AUTH_401)</div></div>
+      <div class="row"><code>SESS_TO</code><div class="def">Session timed out</div></div>
+      <div class="row"><code>SCA_FAIL</code><div class="def">Strong Customer Authentication not satisfied</div></div>
+      <div class="row"><code>VALID_422</code><div class="def">Request failed validation</div></div>
+      <div class="row"><code>RATE_429</code><div class="def">Rate limit exceeded</div></div>
+      <div class="row"><code>GW_504</code><div class="def">Gateway / upstream timeout</div></div>
+      <div class="row"><code>SRV_500</code><div class="def">Internal server error</div></div></div>
+    <div class="gtable"><div class="h">General terms</div>
+      <div class="row"><code>TTL</code><div class="def">Token time-to-live before expiry</div></div>
+      <div class="row"><code>JWT</code><div class="def">JSON Web Token — API access token</div></div>
+      <div class="row"><code>SCA</code><div class="def">Strong Customer Authentication (PSD2)</div></div>
+      <div class="row"><code>KYC</code><div class="def">Know Your Customer</div></div>
+      <div class="row"><code>deploy_ref</code><div class="def">Release reference for a deployment that week</div></div>
+      <div class="row"><code>RAG</code><div class="def">Red / Amber / Green status</div></div>
+      <div class="row"><code>Leakage</code><div class="def">% of defects that reached production</div></div>
+      <div class="row"><code>Density</code><div class="def">Defects per unit of size</div></div></div>
+  </div>
+</div></section>
+
+<section class="panel" id="downloads"><div class="wrap">
+  <p class="lead">Everything you need to start. Files download the exact bytes embedded in this page —
+  no separate files needed.</p>
+  <div class="grid dl">
+      <div class="file"><span class="pill">csv</span><div class="fn">brislane_primary_data.csv</div>
+        <div class="fd">12-week loan funnel by channel — the &ldquo;where is the problem&rdquo; file.</div>
+        <button class="btn" data-dl="primary">Download</button></div>
+      <div class="file"><span class="pill">csv</span><div class="fn">brislane_secondary_data.csv</div>
+        <div class="fd">90 days of support tickets — the customer&rsquo;s-eye view.</div>
+        <button class="btn" data-dl="secondary">Download</button></div>
+      <div class="file"><span class="pill">csv</span><div class="fn">brislane_operational_report.csv</div>
+        <div class="fd">Weekly API error log by endpoint — the &ldquo;why&rdquo; file.</div>
+        <button class="btn" data-dl="operational">Download</button></div>
+      <div class="file"><span class="pill">md</span><div class="fn">brislane_process_notes.md</div>
+        <div class="fd">Tom&rsquo;s incomplete QA handover — the starting point for your discovery.</div>
+        <button class="btn" data-dl="handover">Download</button></div>
+      <div class="file"><span class="pill">repo</span><div class="fn">brislane-lending-platform</div>
+        <div class="fd">Starter Playwright framework with deliberate tech debt. Clone this, then audit &amp; refactor it in Phases 6–7.</div>
+        <a class="btn" href="https://github.com/alain-Sortnext/brislane-lending-platform" target="_blank" rel="noopener">Open on GitHub</a></div>
+      <div class="file soon"><span class="pill">postman</span><div class="fn">postman_collection.json</div>
+        <div class="fd">Broken API collection to repair in Phase 3. Hosted on GitHub.</div>
+        <button class="btn ghost" disabled>Link added later</button></div></div>
+</div></section>
+
+<footer><div class="wrap">Brislane PLC — internal quality console &middot; candidate data room &middot; Project Keystone &middot;
+generated for Project Lab &middot; host on Cloudflare Pages</div></footer>
+
+<script type="application/csv" id="csv-primary">week_start,channel,applications_started,id_verif,docs_uploaded,aff_chk_passed,credit_dec,submitted,funded
+2026-04-13,WEB,1673,1589,1539,1506,1472,1422,1372
+2026-04-13,APP,872,820,794,776,759,732,706
+2026-04-13,BROKER,432,415,402,393,384,372,359
+2026-04-20,WEB,1687,1603,1552,1518,1485,1434,1383
+2026-04-20,APP,885,832,805,788,770,743,717
+2026-04-20,BROKER,441,423,410,401,392,379,366
+2026-04-27,WEB,1615,1534,1486,1454,1421,1373,1324
+2026-04-27,APP,874,822,795,778,760,734,741
+2026-04-27,BROKER,460,442,428,419,409,396,382
+2026-05-04,WEB,1598,1518,1470,1438,1406,1358,1310
+2026-05-04,APP,915,860,833,814,796,769,741
+2026-05-04,BROKER,460,,428,419,409,396,382
+11/05/2026,WEB,1709,1624,1572,1538,1504,1453,1401
+11/05/2026,APP,905,851,824,805,787,760,733
+11/05/2026,BROKER,435,418,405,396,387,374,361
+18/05/2026,WEB,1667,1584,1534,1500,1467,1417,1367
+18/05/2026,APP,896,842,815,797,780,753,726
+18/05/2026,BROKER,433,416,403,394,385,372,359
+25/05/2026,WEB,952,904,876,857,838,809,781
+25/05/2026,APP,522,491,475,465,454,438,423
+25/05/2026,BROKER,264,253,246,240,235,227,219
+01/06/2026,WEB,1616,1535,1487,1454,1422,1374,1325
+01/06/2026,APP,902,848,821,803,785,758,731
+01/06/2026,BROKER,455,437,423,414,405,391,378
+2026-06-08,WEB,1587,1508,1444,1412,1381,1016,984
+2026-06-08,APP,906,852,815,797,779,562,544
+2026-06-08,BROKER,439,421,408,399,391,364,351
+2026-06-15,WEB,1684,1600,1532,1499,1465,1078,1044
+2026-06-15,WEB,1684,1600,1523,1499,1465,1078,1044
+2026-06-15,APP,913,858,822,803,785,566,548
+2026-06-15,BROKER,458,440,426,417,408,380,366
+2026-06-22,WEB,1660,1577,1511,1477,1444,1062,1029
+2026-06-22,APP,896,842,806,788,771,556,538
+2026-06-22,BROKER,440,422,409,400,392,365,352
+2026-06-29,WEB,1646,1564,1498,1465,1432,1053,1021
+2026-06-29,APP,909,854,818,800,782,564,545
+2026-06-29,BROKER,442,424,411,402,393,367,354
+</script>
+<script type="application/csv" id="csv-secondary">ticket_id,date_opened,channel,category,description,csat_score,status,customer_id
+TCK-10198,2026-06-28,Chat,ACCOUNT ACCESS,Account locked me out,1,Resolved,C173751
+TCK-10091,2026-05-19,Chat,QUOTE / INTEREST QUERY,Query about my quote,1,Resolved,C202205
+TCK-10132,2026-06-05,Phone,QUOTE / INTEREST QUERY,Query about my quote,1,Open,C197338
+TCK-10153,2026-06-12,Chat,Login / Account Access,Account locked me out,,Resolved,C282706
+TCK-10038,2026-04-21,Chat,loan submission failed,Page errored when I pressed submit,2,Open,C215127
+TCK-10187,2026-06-24,Chat,repayment query,Wanted to change my Direct Debit,3,Resolved,C325797
+TCK-10009,2026-04-09,Email,doc upload problem,Upload failed on ID document,3,Open,C404032
+TCK-10196,2026-06-27,Chat,Login / Account Access,Account locked me out,,Resolved,C417625
+TCK-10113,2026-05-29,Phone,Repayment Query,Wanted to change my Direct Debit,1,Open,C371524
+TCK-10020,2026-04-12,Phone,General Enquiry,Wanted to check application status,3,Resolved,C175559
+TCK-10044,2026-04-25,Email,GENERAL ENQUIRY,Wanted to check application status,2,Resolved,C184645
+TCK-10180,2026-06-22,Chat,SUBMISSION ERROR,Application wouldn't go through on the final step,3,Resolved,C348792
+TCK-10119,2026-05-30,Chat,General Enquiry,Asked about eligibility,,Resolved,C128450
+TCK-10214,2026-07-04,Phone,LOGIN / ACCOUNT ACCESS,Couldn't log in,5,Resolved,C330147
+TCK-10165,2026-06-17,Phone,Submission Error,Said my session had expired when I tried to submit,1,Resolved,C434269
+TCK-10140,2026-06-09,Phone,document upload issue,Document upload kept spinning,,Resolved,C396329
+TCK-10205,2026-06-30,Phone,loan submission failure,"Couldn't complete my application, it failed at the end",3,Resolved,C323320
+TCK-10155,2026-06-13,Phone,LOAN SUBMISSION FAILURE,Application wouldn't go through on the final step,3,Resolved,C479236
+TCK-10142,2026-06-09,Phone,Repayment Query,Question about my repayment date,1,Resolved,C486287
+TCK-10202,2026-06-29,Chat,REPAYMENT QUERY,Question about my repayment date,3,Resolved,C402968
+TCK-10008,2026-04-08,Email,General Enquiry,General question about my loan,2,Resolved,C179683
+TCK-10106,2026-05-26,Email,Quote / Interest Query,Question on max loan amount,4,Resolved,C314847
+TCK-10046,2026-04-26,Chat,Document Upload Issue,Document upload kept spinning,1,Resolved,C109664
+TCK-10117,2026-05-30,Email,doc upload problem,Couldn't upload my payslip,5,Open,C194145
+TCK-10007,2026-04-08,Email,Loan Submission Failed,Page errored when I pressed submit,2,Resolved,C401163
+TCK-10199,2026-06-28,Phone,payment query,Query on interest charged,1,Open,C300140
+TCK-10189,2026-06-25,Chat,QUOTE / INTEREST QUERY,Asked about the APR offered,5,Resolved,C179568
+TCK-10174,2026-06-19,Phone,Quote / Interest Query,Asked about the APR offered,2,Open,C380243
+TCK-10084,2026-05-17,Chat,Payment Query,Query on interest charged,2,Open,C318643
+TCK-10167,2026-06-17,Email,General Enquiry,General question about my loan,,Resolved,C305501
+TCK-10209,2026-07-02,Phone,QUOTE / INTEREST QUERY,Question on max loan amount,2,Resolved,C495811
+TCK-10121,2026-05-31,Phone,QUOTE / INTEREST QUERY,Asked about the APR offered,,Resolved,C339286
+TCK-10195,2026-06-27,Chat,doc upload problem,Document upload kept spinning,5,Resolved,C495716
+TCK-10136,2026-06-08,Chat,LOAN SUBMISSION FAILURE,Page errored when I pressed submit,,Open,C459521
+TCK-10182,2026-06-23,Email,loan submission failure,Application wouldn't go through on the final step,1,Resolved,C200825
+TCK-10085,2026-05-17,Chat,General Enquiry,Asked about eligibility,1,Resolved,C112388
+TCK-10143,2026-06-09,Chat,GENERAL ENQUIRY,Asked about eligibility,,Resolved,C496242
+TCK-10055,2026-05-01,Phone,Quote / Interest Query,Question on max loan amount,,Resolved,C144612
+TCK-10043,2026-04-25,Email,login / account access,Couldn't log in,1,Open,C106053
+TCK-10177,2026-06-21,Chat,LOGIN / ACCOUNT ACCESS,Couldn't log in,3,Open,C464844
+TCK-10141,2026-06-09,Chat,LOGIN / ACCOUNT ACCESS,Couldn't log in,2,Resolved,C174365
+TCK-10145,2026-06-10,Phone,document upload issue,Upload failed on ID document,3,Open,C236922
+TCK-10176,2026-06-21,Phone,Submission Error,Said my session had expired when I tried to submit,1,Open,C344891
+TCK-10204,2026-06-30,Phone,Submission Error,Page errored when I pressed submit,1,Resolved,C117605
+TCK-10028,2026-04-16,Email,Quote / Interest Query,Question on max loan amount,2,Open,C444597
+TCK-10049,2026-04-28,Email,Payment Query,Query on interest charged,3,Resolved,C463166
+TCK-10124,2026-06-01,Chat,Repayment Query,Query on interest charged,3,Open,C391074
+TCK-10170,2026-06-18,Phone,Account Access,Session expired and had to sign in again,4,Resolved,C352480
+TCK-10078,2026-05-14,Email,General Enquiry,Asked about eligibility,1,Resolved,C136884
+TCK-10110,2026-05-28,Email,doc upload problem,Upload failed on ID document,2,Resolved,C282423
+TCK-10166,2026-06-17,Chat,DOC UPLOAD PROBLEM,Document upload kept spinning,1,Open,C320487
+TCK-10104,2026-05-26,Phone,Payment Query,Wanted to change my Direct Debit,2,Resolved,C140860
+TCK-10026,2026-04-16,Email,Login / Account Access,Session expired and had to sign in again,2,Open,C193596
+TCK-10216,2026-07-04,Chat,General Enquiry,General question about my loan,5,Resolved,C180409
+TCK-10200,2026-06-29,Email,Submission Error,Kept getting signed out before I could submit the form,3,Resolved,C301837
+TCK-10122,2026-06-01,Email,Loan Submission Failed,"Couldn't complete my application, it failed at the end",,Resolved,C267288
+TCK-10054,2026-05-01,Chat,REPAYMENT QUERY,Query on interest charged,,Open,C484749
+TCK-10039,2026-04-22,Email,loan submission failure,"Couldn't complete my application, it failed at the end",4,Resolved,C286968
+TCK-10027,2026-04-16,Phone,General Enquiry,Asked about eligibility,1,Resolved,C189130
+TCK-10087,2026-05-18,Email,PAYMENT QUERY,Query on interest charged,4,Resolved,C273905
+TCK-10099,2026-05-24,Chat,repayment query,Query on interest charged,4,Resolved,C228948
+TCK-10013,2026-04-22,Email,General Enquiry,General question about my loan,2,Resolved,C144072
+TCK-10213,2026-07-04,Phone,Submission Error,Got logged out halfway through and the submit failed,3,Resolved,C350367
+TCK-10097,2026-05-23,Email,Quote / Interest Query,Query about my quote,2,Resolved,C254100
+TCK-10109,2026-05-28,Email,LOAN SUBMISSION FAILED,Application wouldn't go through on the final step,,Resolved,C435893
+TCK-10178,2026-06-21,Email,general enquiry,Wanted to check application status,1,Resolved,C433992
+TCK-10081,2026-05-16,Chat,Payment Query,Question about my repayment date,2,Open,C117876
+TCK-10194,2026-06-27,Chat,Submission Error,"Couldn't complete my application, it failed at the end",2,Resolved,C290455
+TCK-10172,2026-06-19,Chat,doc upload problem,Upload failed on ID document,2,Resolved,C431959
+TCK-10030,2026-04-17,Email,Repayment Query,Wanted to change my Direct Debit,3,Resolved,C385397
+TCK-10070,2026-05-10,Phone,QUOTE / INTEREST QUERY,Question on max loan amount,,Open,C388561
+TCK-10116,2026-05-30,Email,submission error,Application wouldn't go through on the final step,3,Open,C364020
+TCK-10163,2026-06-16,Chat,LOAN SUBMISSION FAILED,Kept getting signed out before I could submit the form,,Resolved,C184327
+TCK-10203,2026-06-29,Email,GENERAL ENQUIRY,Asked about eligibility,5,Resolved,C155636
+TCK-10211,2026-07-03,Phone,DOC UPLOAD PROBLEM,Document upload kept spinning,2,Resolved,C455279
+TCK-10158,2026-06-14,Chat,Submission Error,Said my session had expired when I tried to submit,1,Open,C328866
+TCK-10169,2026-06-18,Email,Submission Error,Kept getting signed out before I could submit the form,,Resolved,C346101
+TCK-10065,2026-05-06,Phone,general enquiry,Wanted to check application status,3,Open,C162936
+TCK-10128,2026-06-03,Phone,General Enquiry,Wanted to check application status,1,Resolved,C128517
+TCK-10125,2026-06-02,Chat,loan submission failure,"Couldn't complete my application, it failed at the end",3,Open,C293433
+TCK-10191,2026-06-26,Chat,Submission Error,Said my session had expired when I tried to submit,2,Resolved,C291823
+TCK-10129,2026-06-04,Phone,LOAN SUBMISSION FAILURE,Page errored when I pressed submit,,Resolved,C408853
+TCK-10148,2026-06-11,Chat,loan submission failure,Got logged out halfway through and the submit failed,2,Open,C100681
+TCK-10006,2026-04-07,Email,General Enquiry,General question about my loan,,Open,C264703
+TCK-10175,2026-06-20,Email,loan submission failure,Tried to submit my loan application and got an error,,Resolved,C203478
+TCK-10102,2026-05-25,Chat,Payment Query,Query on interest charged,1,Resolved,C434211
+TCK-10171,2026-06-19,Phone,loan submission failure,Tried to submit my loan application and got an error,2,Resolved,C301908
+TCK-10108,2026-05-27,Email,General Enquiry,General question about my loan,4,Resolved,C147441
+TCK-10057,2026-05-02,Phone,General Enquiry,General question about my loan,1,Open,C232222
+TCK-10101,2026-05-25,Email,DOCUMENT UPLOAD ISSUE,Document upload kept spinning,2,Resolved,C139382
+TCK-10138,2026-06-08,Phone,GENERAL ENQUIRY,General question about my loan,4,Resolved,C415218
+TCK-10215,2026-07-04,Phone,REPAYMENT QUERY,Wanted to change my Direct Debit,3,Resolved,C275378
+TCK-10060,2026-05-04,Chat,Document Upload Issue,Document upload kept spinning,5,Resolved,C471652
+TCK-10193,2026-06-26,Chat,quote / interest query,Query about my quote,3,Resolved,C354976
+TCK-10082,2026-05-16,Chat,General Enquiry,Wanted to check application status,2,Resolved,C253150
+TCK-10077,2026-05-14,Chat,Repayment Query,Question about my repayment date,1,Resolved,C167091
+TCK-10118,2026-05-30,Chat,payment query,Wanted to change my Direct Debit,5,Resolved,C121313
+TCK-10034,2026-04-18,Phone,QUOTE / INTEREST QUERY,Query about my quote,1,Open,
+TCK-10212,2026-07-03,Phone,Quote / Interest Query,Query about my quote,3,Resolved,C334485
+TCK-10095,2026-05-22,Phone,submission error,Page errored when I pressed submit,,Resolved,C368375
+TCK-10090,2026-05-19,Email,GENERAL ENQUIRY,Wanted to check application status,4,Resolved,C427894
+TCK-10013,2026-04-10,Email,LOAN SUBMISSION FAILED,"Couldn't complete my application, it failed at the end",4,Resolved,C171788
+TCK-10137,2026-06-08,Phone,Login / Account Access,Couldn't log in,1,Resolved,C236508
+TCK-10120,2026-05-31,Chat,LOGIN / ACCOUNT ACCESS,Couldn't log in,5,Resolved,C186565
+TCK-10072,2026-05-11,Phone,document upload issue,Upload failed on ID document,3,Resolved,C398643
+TCK-10033,2026-04-18,Chat,General Enquiry,General question about my loan,,Open,C155631
+TCK-10040,2026-04-22,Phone,document upload issue,Document upload kept spinning,5,Open,C468653
+TCK-10126,2026-06-02,Chat,document upload issue,Document upload kept spinning,2,Resolved,C255390
+TCK-10022,2026-04-13,Email,Document Upload Issue,Upload failed on ID document,3,Resolved,C465007
+TCK-10152,2026-06-12,Chat,doc upload problem,Couldn't upload my payslip,,Resolved,C298865
+TCK-10080,2026-05-16,Email,loan submission failure,"Couldn't complete my application, it failed at the end",1,Resolved,C201772
+TCK-10029,2026-04-17,Phone,LOAN SUBMISSION FAILED,Application wouldn't go through on the final step,1,Resolved,C327441
+TCK-10012,2026-04-09,Chat,General Enquiry,Asked about eligibility,2,Resolved,C167811
+TCK-10032,2026-04-18,Email,Login / Account Access,Account locked me out,2,Resolved,C174217
+TCK-10162,2026-06-15,Chat,Payment Query,Wanted to change my Direct Debit,,Open,C371713
+TCK-10018,2026-04-11,Phone,QUOTE / INTEREST QUERY,Question on max loan amount,,Resolved,C381342
+TCK-10185,2026-06-24,Chat,LOAN SUBMISSION FAILED,Tried to submit my loan application and got an error,5,Resolved,C153142
+TCK-10103,2026-05-26,Chat,LOAN SUBMISSION FAILED,Page errored when I pressed submit,3,Resolved,C414270
+TCK-10068,2026-05-09,Phone,General Enquiry,Asked about eligibility,2,Resolved,C354581
+TCK-10151,2026-06-12,Chat,SUBMISSION ERROR,Page errored when I pressed submit,4,Resolved,C321317
+TCK-10066,2026-05-08,Chat,Submission Error,"Couldn't complete my application, it failed at the end",3,Resolved,C127062
+TCK-10058,2026-05-03,Phone,Loan Submission Failed,Application wouldn't go through on the final step,5,Open,C300571
+TCK-10146,2026-06-10,Chat,Login / Account Access,Account locked me out,3,Resolved,C415625
+TCK-10144,2026-06-10,Phone,LOAN SUBMISSION FAILURE,Got logged out halfway through and the submit failed,3,Open,C152364
+TCK-10149,2026-06-11,Phone,document upload issue,Couldn't upload my payslip,1,Open,C464489
+TCK-10014,2026-04-10,Chat,GENERAL ENQUIRY,Wanted to check application status,2,Resolved,C221612
+TCK-10190,2026-06-26,Phone,LOAN SUBMISSION FAILED,Tried to submit my loan application and got an error,1,Resolved,C347637
+TCK-10210,2026-07-03,Email,LOAN SUBMISSION FAILURE,Kept getting signed out before I could submit the form,3,Resolved,C234747
+TCK-10016,2026-04-11,Email,Repayment Query,Query on interest charged,,Open,C308703
+TCK-10098,2026-05-24,Phone,submission error,Page errored when I pressed submit,3,Resolved,C330370
+TCK-10083,2026-05-17,Phone,loan submission failed,"Couldn't complete my application, it failed at the end",2,Resolved,C343853
+TCK-10063,2026-05-06,Email,Loan Submission Failed,Page errored when I pressed submit,2,Open,C354877
+TCK-10139,2026-06-09,Chat,Submission Error,"Couldn't complete my application, it failed at the end",1,Resolved,C329226
+TCK-10031,2026-04-17,Phone,Quote / Interest Query,Question on max loan amount,,Open,C363008
+TCK-10019,2026-04-12,Email,ACCOUNT ACCESS,Couldn't log in,3,Resolved,C415767
+TCK-10168,2026-06-17,Chat,Quote / Interest Query,Query about my quote,2,Open,C436697
+TCK-10115,2026-05-29,Email,quote / interest query,Asked about the APR offered,5,Resolved,C440277
+TCK-10160,2026-06-15,Phone,loan submission failure,Said my session had expired when I tried to submit,,Resolved,C456304
+TCK-10092,2026-05-20,Chat,submission error,Page errored when I pressed submit,,Resolved,C237453
+TCK-10002,2026-04-06,Phone,DOCUMENT UPLOAD ISSUE,Upload failed on ID document,4,Open,C136624
+TCK-10096,2026-05-23,Phone,Document Upload Issue,Document upload kept spinning,3,Resolved,C209230
+TCK-10208,2026-07-02,Chat,LOGIN / ACCOUNT ACCESS,Couldn't log in,3,Resolved,C131078
+TCK-10010,2026-04-09,Chat,Account Access,Couldn't log in,1,Resolved,C483338
+TCK-10217,2026-07-04,Phone,Quote / Interest Query,Question on max loan amount,3,Resolved,C235157
+TCK-10192,2026-06-26,Phone,General Enquiry,Asked about eligibility,3,Resolved,C476024
+TCK-10064,2026-05-06,Phone,doc upload problem,Couldn't upload my payslip,4,Resolved,C481253
+TCK-10069,2026-05-10,Chat,doc upload problem,Document upload kept spinning,3,Resolved,C312970
+TCK-10035,2026-04-20,Chat,loan submission failure,"Couldn't complete my application, it failed at the end",5,Resolved,C466591
+TCK-10123,2026-06-01,Phone,DOC UPLOAD PROBLEM,Couldn't upload my payslip,3,Resolved,C297573
+TCK-10159,2026-06-14,Chat,doc upload problem,Upload failed on ID document,2,Resolved,C416517
+TCK-10004,2026-04-06,Phone,GENERAL ENQUIRY,Asked about eligibility,2,Resolved,C391852
+TCK-10024,2026-04-14,Email,Submission Error,"Couldn't complete my application, it failed at the end",1,Resolved,C347589
+TCK-10173,2026-06-19,Phone,Login / Account Access,Couldn't log in,3,Resolved,C418872
+TCK-10073,2026-05-11,Email,general enquiry,Wanted to check application status,3,Resolved,C361171
+TCK-10086,2026-05-17,Phone,QUOTE / INTEREST QUERY,Query about my quote,5,Resolved,C484158
+TCK-10089,2026-05-19,Chat,Submission Error,Page errored when I pressed submit,4,Resolved,C125825
+TCK-10133,2026-06-06,Phone,Loan Submission Failed,Tried to submit my loan application and got an error,2,Resolved,C316624
+TCK-10207,2026-07-02,Email,LOAN SUBMISSION FAILURE,Had to log back in and lost my application at submission,1,Open,C195771
+TCK-10188,2026-06-25,Phone,Submission Error,Got logged out halfway through and the submit failed,4,Open,C135242
+TCK-10181,2026-06-22,Email,payment query,Wanted to change my Direct Debit,1,Resolved,C253554
+TCK-10017,2026-04-11,Phone,GENERAL ENQUIRY,Wanted to check application status,1,Resolved,C331015
+TCK-10003,2026-04-06,Chat,Login / Account Access,Account locked me out,1,Resolved,C430629
+TCK-10052,2026-04-29,Chat,QUOTE / INTEREST QUERY,Question on max loan amount,1,Resolved,C309458
+TCK-10079,2026-05-15,Chat,general enquiry,Wanted to check application status,3,Resolved,C349196
+TCK-10150,2026-06-12,Chat,SUBMISSION ERROR,Application wouldn't go through on the final step,1,Open,C465511
+TCK-10050,2026-04-28,Email,general enquiry,General question about my loan,1,Resolved,C290914
+TCK-10161,2026-06-15,Email,submission error,"Couldn't complete my application, it failed at the end",1,Open,C227085
+TCK-10157,2026-06-13,Email,Quote / Interest Query,Asked about the APR offered,3,Resolved,C328024
+TCK-10183,2026-06-23,Chat,loan submission failure,Application wouldn't go through on the final step,1,Resolved,C309127
+TCK-10053,2026-04-30,Chat,submission error,Tried to submit my loan application and got an error,2,Resolved,C407014
+TCK-10179,2026-06-22,Phone,Loan Submission Failed,Page errored when I pressed submit,5,Resolved,C117771
+TCK-10206,2026-07-01,Email,LOAN SUBMISSION FAILED,Got logged out halfway through and the submit failed,,Resolved,C469922
+TCK-10127,2026-06-03,Chat,LOGIN / ACCOUNT ACCESS,Couldn't log in,,Open,C318988
+TCK-10156,2026-06-13,Chat,General Enquiry,General question about my loan,3,Resolved,C186298
+TCK-10023,2026-04-13,Email,General Enquiry,General question about my loan,,Resolved,C225508
+TCK-10021,2026-04-13,Email,LOAN SUBMISSION FAILURE,"Couldn't complete my application, it failed at the end",1,Resolved,C376959
+TCK-10154,2026-06-12,Email,Payment Query,Question about my repayment date,3,Resolved,C342827
+TCK-10051,2026-04-29,Email,REPAYMENT QUERY,Wanted to change my Direct Debit,4,Resolved,C348849
+TCK-10045,2026-04-25,Email,Quote / Interest Query,Query about my quote,,Resolved,C252022
+TCK-10059,2026-05-04,Email,submission error,Application wouldn't go through on the final step,3,Resolved,C106537
+TCK-10134,2026-06-06,Phone,General Enquiry,Asked about eligibility,1,Resolved,C428185
+TCK-10184,2026-06-23,Chat,GENERAL ENQUIRY,General question about my loan,5,Resolved,C362585
+TCK-10197,2026-06-28,Email,Submission Error,"Couldn't complete my application, it failed at the end",,Resolved,C336595
+TCK-10047,2026-04-27,Phone,loan submission failure,"Couldn't complete my application, it failed at the end",4,Resolved,C460574
+TCK-10147,2026-06-10,Phone,General Enquiry,Asked about eligibility,1,Open,C371907
+TCK-10071,2026-05-11,Phone,submission error,Page errored when I pressed submit,,Resolved,C227971
+TCK-10056,2026-05-02,Phone,loan submission failed,Page errored when I pressed submit,5,Resolved,C429130
+TCK-10105,2026-05-26,Chat,GENERAL ENQUIRY,Wanted to check application status,1,Open,C448141
+TCK-10011,2026-04-09,Email,payment query,Query on interest charged,4,Resolved,C111829
+TCK-10112,2026-05-29,Phone,Loan Submission Failed,"Couldn't complete my application, it failed at the end",,Resolved,C435714
+TCK-10093,2026-05-20,Chat,REPAYMENT QUERY,Question about my repayment date,2,Resolved,C349135
+TCK-10048,2026-04-28,Chat,Loan Submission Failed,Page errored when I pressed submit,1,Resolved,C427915
+TCK-10074,2026-05-12,Chat,loan submission failed,Application wouldn't go through on the final step,2,Open,C309587
+TCK-10135,2026-06-08,Chat,SUBMISSION ERROR,Got logged out halfway through and the submit failed,1,Resolved,C275907
+TCK-10001,2026-04-06,Chat,Submission Error,Application wouldn't go through on the final step,1,Resolved,C291726
+TCK-10201,2026-06-29,Email,LOAN SUBMISSION FAILED,Page errored when I pressed submit,,Resolved,C373604
+TCK-10036,2026-04-20,Email,Repayment Query,Query on interest charged,2,Open,C163764
+TCK-10131,2026-06-05,Chat,Loan Submission Failed,Tried to submit my loan application and got an error,,Resolved,C411806
+TCK-10088,2026-05-18,Chat,general enquiry,General question about my loan,3,Open,C164858
+TCK-10130,2026-06-04,Email,General Enquiry,General question about my loan,1,Resolved,C448899
+TCK-10114,2026-05-29,Chat,GENERAL ENQUIRY,General question about my loan,2,Resolved,C394829
+TCK-10005,2026-04-07,Chat,loan submission failure,Tried to submit my loan application and got an error,2,Resolved,C404925
+TCK-10164,2026-06-16,Phone,loan submission failure,Application wouldn't go through on the final step,,Open,C383658
+TCK-10037,2026-04-20,Chat,QUOTE / INTEREST QUERY,Query about my quote,3,Resolved,C180974
+TCK-10076,2026-05-13,Phone,SUBMISSION ERROR,"Couldn't complete my application, it failed at the end",1,Resolved,C180938
+TCK-10186,2026-06-24,Email,doc upload problem,Couldn't upload my payslip,1,Resolved,C172716
+TCK-10015,2026-04-11,Email,submission error,Application wouldn't go through on the final step,2,Open,C380279
+TCK-10042,2026-04-25,Phone,Submission Error,Application wouldn't go through on the final step,3,Resolved,C432629
+TCK-10107,2026-05-27,Phone,account access,Session expired and had to sign in again,1,Resolved,C437892
+TCK-10075,2026-05-12,Phone,Quote / Interest Query,Query about my quote,5,Open,C100093
+TCK-10100,2026-05-25,Email,LOAN SUBMISSION FAILED,"Couldn't complete my application, it failed at the end",5,Resolved,C335036
+TCK-10025,2026-04-15,Email,LOAN SUBMISSION FAILED,Page errored when I pressed submit,2,Open,C203130
+TCK-10061,2026-05-05,Phone,Loan Submission Failed,Page errored when I pressed submit,1,Resolved,C340632
+TCK-10062,2026-05-05,Chat,GENERAL ENQUIRY,General question about my loan,1,Resolved,C491898
+TCK-10067,2026-05-08,Phone,Payment Query,Wanted to change my Direct Debit,2,Resolved,C324262
+TCK-10111,2026-05-28,Phone,repayment query,Question about my repayment date,2,Resolved,C166401
+TCK-10094,2026-05-21,Phone,Submission Error,Page errored when I pressed submit,2,Open,C195912
+</script>
+<script type="application/csv" id="csv-operational">week_start,endpoint,total_calls,ok_200,fail_total,auth_401,token_exp,sess_to,sca_fail,valid_422,rate_429,gw_504,srv_500,fail_rate,deploy_ref
+2026-04-13,/auth/login,8740,8478,262,164,10,16,5,37,10,10,10,3.0%,
+2026-04-13,/loans/apply,2730,2621,109,11,5,5,2,61,5,11,9,4.0%,
+2026-04-13,/documents/upload,2439,2293,146,12,7,7,1,59,9,29,22,6.0%,
+2026-04-13,/loans/submit,2403,2295,108,9,6,6,3,50,5,13,16,4.5%,
+2026-04-13,/payments,4311,4160,151,15,8,8,27,44,11,20,18,3.5%,
+2026-04-20,/auth/login,8328,8078,250,155,10,15,5,35,10,10,10,0.030,
+2026-04-20,/loans/apply,2894,2778,116,12,6,6,2,63,6,12,9,0.040,
+2026-04-20,/documents/upload,2849,2678,171,14,9,9,2,67,10,34,26,0.060,
+2026-04-20,/loans/submit,2630,2512,118,9,7,7,4,53,6,14,18,0.045,
+2026-04-20,/payments,4526,4368,158,16,8,8,28,47,11,21,19,0.035,
+2026-04-27,/auth/login,8971,8702,269,166,11,16,5,38,11,11,11,3.0%,
+2026-04-27,/loans/apply,2929,2812,117,12,6,6,2,64,6,12,9,4.0%,
+2026-04-27,/documents/upload,2791,2624,167,13,8,8,2,68,10,33,25,6.0%,
+2026-04-27,/loans/submit,2379,2272,107,9,6,6,3,49,5,13,16,4.5%,
+2026-04-27,/payments,4482,4325,157,16,8,8,28,47,11,20,19,3.5%,
+2026-05-04,/auth/login,8659,8399,260,163,10,16,5,36,10,10,10,0.030,
+2026-05-04,/loans/apply,2899,2783,116,12,6,6,2,63,6,12,9,0.040,
+2026-05-04,/documents/upload,2847,2676,171,14,9,9,2,67,10,34,26,0.060,
+2026-05-04,/loans/submit,2328,2223,105,8,6,6,3,48,5,13,16,0.045,
+2026-05-04,/payments,4192,4045,147,15,7,7,26,45,10,19,18,0.035,
+2026-05-11,/auth/login,9944,9646,298,184,12,18,6,42,12,12,12,3.0%,
+2026-05-11,/loans/apply,2854,2740,114,11,6,6,2,63,6,11,9,4.0%,
+2026-05-11,/documents/upload,3061,2877,184,15,9,9,2,73,11,37,28,6.0%,
+2026-05-11,/loans/submit,2622,2504,118,9,7,7,4,53,6,14,18,4.5%,
+2026-05-11,/payments,4329,4177,152,15,8,8,27,45,11,20,18,3.5%,
+2026-05-18,/auth/login,8916,8649,267,165,11,16,5,37,11,11,11,0.030,
+2026-05-18,/loans/apply,2912,2796,116,12,6,6,2,63,6,12,9,0.040,
+2026-05-18,/documents/upload,2513,2362,151,12,8,8,2,59,9,30,23,0.060,
+2026-05-18,/loans/submit,2215,2115,100,8,6,6,3,45,5,12,15,0.045,
+2026-05-18,/payments,3644,3516,128,13,6,6,23,39,9,17,15,0.035,
+2026-05-25,/auth/login,6192,6006,186,117,7,11,4,26,7,7,7,3.0%,
+2026-05-25,/loans/apply,1818,1745,73,7,4,4,1,40,4,7,6,4.0%,
+2026-05-25,/documents/upload,1601,1505,96,8,5,5,1,38,6,19,14,TBC,
+2026-05-25,/loans/submit,1747,1668,79,6,5,5,2,36,4,9,12,4.5%,
+2026-05-25,/payments,2475,2388,87,9,4,4,16,27,6,11,10,3.5%,
+2026-06-01,/auth/login,10287,9978,309,193,12,19,6,43,12,12,12,0.030,
+2026-06-01,/loans/apply,2871,2756,115,12,6,6,2,62,6,12,9,0.040,
+2026-06-01,/documents/upload,2469,2321,148,12,7,7,1,60,9,30,22,0.060,
+2026-06-01,/loans/submit,2928,2796,132,11,8,8,4,58,7,16,20,0.045,
+2026-06-01,/payments,3592,3466,126,13,6,6,23,38,9,16,15,0.035,
+2026-06-08,/auth/login,9787,9493,294,181,12,18,6,41,12,12,12,3.0%,
+2026-06-08,/loans/apply,3085,2962,123,12,6,6,2,69,6,12,10,4.0%,
+2026-06-08,/documents/upload,3091,2906,185,15,9,9,2,74,11,37,28,6.0%,
+2026-06-08,/loans/submit,2946,2195,751,30,306,98,23,128,30,75,61,25.5%,AUTH-SVC 2.4.0
+2026-06-08,/payments,4192,3899,293,18,65,32,44,64,18,29,23,7.0%,AUTH-SVC 2.4.0
+2026-06-15,/auth/login,7750,7518,232,145,9,14,5,32,9,9,9,0.030,
+2026-06-15,/loans/apply,2570,2467,103,10,5,5,2,58,5,10,8,0.040,
+2026-06-15,/documents/upload,2678,2517,161,13,8,8,2,64,10,32,24,0.060,
+2026-06-15,/loans/submit,2849,2123,726,29,297,94,22,123,29,73,59,0.255,
+2026-06-15,/payments,3497,3252,245,15,53,27,37,54,15,24,20,0.070,
+2026-06-22,/auth/login,8798,8534,264,162,11,16,5,37,11,11,11,3.0%,
+2026-06-22,/loans/apply,2627,2522,105,10,5,5,2,60,5,10,8,4.0%,
+2026-06-22,/documents/upload,2545,2392,153,12,8,8,2,60,9,31,23,6.0%,
+2026-06-22,/loans/submit,2214,1649,565,23,231,73,17,96,23,56,46,25.5%,
+2026-06-22,/payments,3795,3529,266,16,58,29,40,59,16,27,21,7.0%,
+2026-06-29,/auth/login,9063,8791,272,169,11,16,5,38,11,11,11,0.030,
+2026-06-29,/loans/apply,2730,2621,109,11,5,5,2,61,5,11,9,0.040,
+2026-06-29,/documents/upload,2932,2756,176,14,9,9,2,70,11,35,26,0.060,
+2026-06-29,/loans/submit,2253,1678,575,23,234,75,17,98,23,58,47,0.255,
+2026-06-29,/payments,3653,3397,256,15,58,28,38,56,15,26,20,0.070,
+</script>
+<script type="text/markdown" id="md-handover"># QA HANDOVER NOTES
+
+**Author:** Tom Whitfield, Senior QA Engineer (outgoing)
+**For:** Incoming Senior Quality Engineer
+**Last day:** Friday 17 July 2026 (end of Sprint 1)
+**Status:** ⚠️ INCOMPLETE — written in a rush before I leave. I've documented what I could. The gaps below are real, not laziness — they're the bits nobody ever had time to do. Sorry. Where I've written `CHECK THIS`, `NOT DOCUMENTED` or `DEPRECATED?`, that's me being honest about what I don't trust.
+
+---
+
+## 1. The honest state of things
+
+You're inheriting a quality setup that grew under deadline pressure and never got cleaned up. Before you trust anything, assume it's wrong until you've checked it. The headline problems:
+
+- The Playwright framework (`brislane-lending-platform`) is flaky and slow. People stopped trusting it months ago and started merging on red.
+- CI is currently **failing** on main and has been amber/red for weeks. `NOT DOCUMENTED` why it started failing — see section 4.
+- Test coverage of the loan journey is patchy. The early stages are covered; the later stages (the important ones) are mostly manual or not covered at all.
+- The Postman collection is out of date and the auth is set up wrong (see section 5).
+- There are **no quality metrics**. Nobody can tell you the real pass rate, defect leakage or coverage. Leadership has been guessing.
+
+---
+
+## 2. The loan journey — test process by stage
+
+The journey is: `APP_START` → `ID_VERIF` → `DOC_UP` → `AFF_CHK` → `CR_DEC` → `SUBMIT` → `FUND`.
+
+I only ever fully documented the front half. Here's the truth stage by stage:
+
+### Stage 1 — APP_START (application started)
+Documented. Smoke test exists (`tests/loan/start.spec.ts`). Stable. Reasonable selectors.
+
+### Stage 2 — ID_VERIF (identity / KYC)
+Documented. Uses a sandbox KYC provider in DEV/QA. Test data in `test-data/kyc/`. Works but slow — there's a hardcoded `waitForTimeout(5000)` in there I'm not proud of. `CHECK THIS` — that wait is a big source of flakiness.
+
+### Stage 3 — DOC_UP (document upload)
+Partially documented. Upload works in QA. There's a known issue where the upload spinner sometimes never resolves on WebKit — I logged it but never root-caused it. The automation for this stage uses a duplicated selector that also exists in the payments page object. `DEPRECATED?` — I think `OldUploadPage.ts` is dead but I'm not certain; grep before you delete.
+
+### Stage 4 — AFF_CHK (affordability check)
+**`NOT DOCUMENTED`.** There's no automated coverage. I tested this manually. The business rules for affordability live in someone's head (probably Product). You'll need to get these written down — they're a compliance-relevant control.
+
+### Stage 5 — CR_DEC (credit decision)
+**`NOT DOCUMENTED`.** No coverage. This calls an external credit bureau in UAT only — it's mocked nowhere, which is why we can't test it reliably below UAT. `CHECK THIS` — mocking this is probably your biggest framework job.
+
+### Stage 6 — SUBMIT (final submission)
+**`NOT DOCUMENTED` and this is the one that's on fire.** Submit failures have been climbing and I never got to the bottom of it. There's a half-written spec (`tests/loan/submit.spec.ts.skip`) that's been skipped for two sprints because it's flaky. See section 7 — this is my unfinished business and probably yours on day one.
+
+### Stage 7 — FUND (funding / approval)
+**`NOT DOCUMENTED`.** No coverage at all. Funding writes to the ledger and the audit log. Compliance care about the audit log a lot (David will tell you). Nobody validates it today. `CHECK THIS` against the database.
+
+---
+
+## 3. Test data
+
+- Seed scripts live in `test-data/` but they're inconsistent — some are SQL, some are JSON fixtures loaded by a script that may or may not still work. `DEPRECATED?` — `seed_legacy.sql` predates the current schema; do not run it against QA.
+- We do **not** use anonymised production data (good — keep it that way, David is strict on UK GDPR).
+- `NOT DOCUMENTED` — there's no documented "known good" customer set for end-to-end runs. You'll want to build one.
+
+---
+
+## 4. The automation framework (`brislane-lending-platform`)
+
+What's there:
+
+- `playwright.config.ts`, `src/pages/` (page objects), `tests/`, `api/`, `fixtures/`, `utils/`, `test-data/`, `.github/workflows/`.
+
+What's wrong (the stuff you'll refactor in the framework phase):
+
+- **Hardcoded waits** everywhere (`waitForTimeout`) instead of proper auto-waiting. Main flakiness driver.
+- **Duplicate selectors** across page objects (login + payments share copy-pasted locators).
+- **Broken assertions** — some specs assert on stale text and pass for the wrong reason.
+- **Flaky tests** — submit + upload specs fail intermittently; people retry until green.
+- **Poor naming** — `test1.spec.ts`, `newtest.spec.ts`, you get the idea.
+- **Missing fixtures** — auth state is re-created per test by logging in through the UI every time (slow, and ironically relevant to the submit problem — see section 7).
+- **Weak Page Object design** — pages expose raw locators, no encapsulation.
+- **Unused code / duplicate utilities** — two date helpers, one unused logger. `DEPRECATED?` throughout `utils/`.
+- **Failing CI** — `.github/workflows/ci.yml` is red. `NOT DOCUMENTED` exactly why it broke; it started after a dependency bump. No quality gates configured.
+
+---
+
+## 5. APIs / Postman
+
+- The collection (`postman_collection.json`) covers Auth, Customers, Loans, Payments, Notifications but it's stale.
+- Auth is set up wrong — the collection hardcodes a bearer token that's long expired, so half the requests 401 out of the box. `CHECK THIS` — needs a proper login request + token variable.
+- There's **no negative testing** and **no contract validation**. Status codes aren't asserted.
+- Compliance-relevant: there's no test that an expired or tampered token is correctly rejected, and nothing exercising SCA on payments. David will flag this hard — get it into scope.
+- `NOT DOCUMENTED` — rate limiting behaviour. We think `/loans/submit` and `/payments` are rate limited (429) but nobody's confirmed the thresholds.
+
+---
+
+## 6. Environments
+
+- We run **DEV**, **QA** and **UAT**. Config is currently scattered across `.env` files that aren't all committed (some live on my laptop — sorry, Sandra has copies).
+- `NOT DOCUMENTED` — the full list of secrets/variables per environment. Sandra (SRE) is your source of truth. Get her to walk you through the gateway and the auth service config.
+- UAT is the only env wired to the real credit bureau. DEV/QA mock it inconsistently. `CHECK THIS`.
+
+---
+
+## 7. The thing I never got to (my hunch — please chase this)
+
+This is the one that's been bugging me. **Submit failures started climbing around early-to-mid June** and they never came back down. At the same time, customer complaints about "the page failing when I submit" and "getting logged out" went up.
+
+Here's my unproven theory, for what it's worth:
+
+- The auth team shipped a release to the authentication service around **8 June** — the deploy reference I saw in the logs was **`AUTH-SVC 2.4.0`**. I'm fairly sure it changed the access-token lifetime (TTL).
+- The loan application is a *long* form. My hunch is that on the slower journeys the token is **expiring before the user reaches submit**, so `/loans/submit` 401s, and the UI shows a generic "submission failed" error — which looks like an upload or form problem but isn't.
+- I never proved it. I was buried in release work. **`CHECK THIS`** — cross-reference the API error log (`brislane_operational_report.csv`) against the funnel (`brislane_primary_data.csv`) and the support tickets (`brislane_secondary_data.csv`), and look at what kind of failure dominates `/loans/submit` after that deploy. If I'm right it's an auth/session issue, not a UX one. If I'm wrong, ignore me — but the data should settle it either way.
+
+Either way: don't take my word for it. Prove it with the numbers.
+
+---
+
+## 8. Open questions (for you and the team)
+
+1. Why exactly did CI start failing on main, and when? (`NOT DOCUMENTED`)
+2. What are the documented affordability (`AFF_CHK`) business rules? Who owns them?
+3. Can `CR_DEC` (credit bureau) be mocked so we can test below UAT?
+4. What are the real rate-limit thresholds on `/loans/submit` and `/payments`?
+5. Is the funding (`FUND`) audit log actually complete and immutable? (Compliance question)
+6. What's the *real* automation pass rate and defect leakage? Nobody has a number.
+7. Is `OldUploadPage.ts` / `seed_legacy.sql` dead code? (`DEPRECATED?`)
+8. Did the `AUTH-SVC 2.4.0` deploy change the token TTL — and was the long-form journey ever re-tested against it?
+
+---
+
+## 9. Contacts — who to ask for what
+
+- **Priya Nair** — Director of Engineering, your manager. Delivery, priorities, anything that affects the 28 Aug date. She'll push back on scope; bring evidence.
+- **Sandra Okoye** — Platform / SRE. Environments, the API gateway, the auth service config, database access, logs. She has the `.env` files and knows what `AUTH-SVC 2.4.0` actually changed. Talk to her first.
+- **David Mensah** — Head of Compliance & Risk. FCA Consumer Duty, SCA/PSD2, token/session controls, audit-trail integrity, UK GDPR. He sets hard requirements your scope must cover.
+- **Marcus Reed** — Product Director. Owns the business rules that aren't written down (affordability, eligibility). Wants to ship.
+- **Lena Fischer** — Customer Success. Has the real complaint data and can tell you what customers actually experience at submit.
+
+---
+
+Good luck. It's a mess but it's a fixable mess, and the data is honest even when the process isn't. Start with the submit problem — that's where the money is leaking.
+
+— Tom
+</script>
+
+<script>
+const FILES = {primary:"brislane_primary_data.csv",secondary:"brislane_secondary_data.csv",operational:"brislane_operational_report.csv",handover:"brislane_process_notes.md"};
+const RAW={}, DATA={};
+function parseCSV(t){
+  const rows=[];let i=0,f='',row=[],q=false;
+  while(i<t.length){const c=t[i];
+    if(q){ if(c=='"'){ if(t[i+1]=='"'){f+='"';i++} else q=false } else f+=c }
+    else{ if(c=='"')q=true; else if(c==','){row.push(f);f=''}
+      else if(c=='\n'||c=='\r'){ if(c=='\r'&&t[i+1]=='\n')i++; if(f!==''||row.length){row.push(f);rows.push(row);row=[];f=''} }
+      else f+=c }
+    i++;}
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows.filter(r=>r.length>1||r[0]!=='');
+}
+document.querySelectorAll('script[type="application/csv"]').forEach(s=>{
+  const id=s.id.replace('csv-',''); RAW[id]=s.textContent; DATA[id]=parseCSV(s.textContent);
+});
+document.querySelectorAll('script[type="text/markdown"]').forEach(s=>{
+  RAW[s.id.replace('md-','')]=s.textContent;
+});
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function render(ds, filter=''){
+  const rows=DATA[ds]; if(!rows||!rows.length)return;
+  const head=rows[0], body=rows.slice(1);
+  const f=filter.trim().toLowerCase();
+  const shown=f? body.filter(r=>r.join(' ').toLowerCase().includes(f)) : body;
+  let h='<table><thead><tr>'+head.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>';
+  h+=shown.map(r=>'<tr>'+head.map((_,j)=>'<td>'+esc(r[j]??'')+'</td>').join('')+'</tr>').join('');
+  h+='</tbody></table>';
+  document.getElementById('tbl-'+ds).innerHTML=h;
+  document.getElementById('rc-'+ds).textContent=shown.length+' / '+body.length+' rows';
+}
+function mime(fn){return fn.endsWith('.md')?'text/markdown':fn.endsWith('.json')?'application/json':'text/csv'}
+function download(ds){
+  const blob=new Blob([RAW[ds]],{type:mime(FILES[ds])});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=FILES[ds];document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+document.querySelectorAll('.tabbtn').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabbtn').forEach(x=>x.setAttribute('aria-selected', x===b));
+  document.querySelectorAll('section.panel').forEach(p=>p.classList.toggle('active',p.id===b.dataset.tab));
+});
+document.querySelectorAll('.subtab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.subtab').forEach(x=>x.setAttribute('aria-selected', x===b));
+  document.querySelectorAll('.dataset').forEach(p=>p.classList.toggle('active',p.id==='ds-'+b.dataset.ds));
+});
+document.querySelectorAll('.search').forEach(inp=>inp.oninput=()=>render(inp.dataset.for, inp.value));
+document.querySelectorAll('[data-dl]').forEach(btn=>btn.onclick=()=>download(btn.dataset.dl));
+function tick(){
+  const go=new Date('2026-08-28T09:00:00Z');const now=new Date();
+  let s=Math.max(0,(go-now)/1000);const d=Math.floor(s/86400);s-=d*86400;
+  const h=Math.floor(s/3600);s-=h*3600;const m=Math.floor(s/60);
+  document.getElementById('countdown').textContent=d+'d '+String(h).padStart(2,'0')+'h '+String(m).padStart(2,'0')+'m';
+}
+tick();setInterval(tick,60000);
+Object.keys(DATA).forEach(id=>{ if(document.getElementById('tbl-'+id)) render(id); });
+</script>
+</body></html>
