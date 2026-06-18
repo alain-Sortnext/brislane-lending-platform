@@ -1,0 +1,12 @@
+import { test, expect } from '@playwright/test';
+import { ApplicationPage } from '../../src/pages/ApplicationPage';
+// SKIPPED for 2 sprints — fails intermittently with a 401 at submit.
+// Tom's hunch: token expiry on the long form after the AUTH-SVC 2.4.0 deploy. Never proven.
+test('applicant can submit a completed application', async ({ page }) => {
+  const app = new ApplicationPage(page);
+  await app.startApplication();
+  await app.fillIdentity('Jordan Tester', '1990-01-01');
+  await app.fillAffordability('3200', '1400');
+  await app.submit();
+  await expect(page.locator('.application-submitted')).toBeVisible();
+});

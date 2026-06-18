@@ -1,0 +1,4 @@
+[
+  { "id": "C100001", "name": "Jordan Tester", "dob": "1990-01-01", "income": 3200 },
+  { "id": "C100002", "name": "Sam Example",   "dob": "1985-06-12", "income": 4100 }
+]

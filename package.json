@@ -1,0 +1,17 @@
+{
+  "name": "brislane-lending-platform",
+  "version": "0.1.0",
+  "description": "Brislane Lend — E2E + API quality automation (inherited). Known to be flaky; see README.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:api": "playwright test api/",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@axe-core/playwright": "^4.9.0",
+    "typescript": "^5.4.0",
+    "dotenv": "^16.4.0"
+  }
+}
