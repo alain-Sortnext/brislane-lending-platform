@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: process.env.BASE_URL || 'https://qa.brislane.example',
-    trace: 'off', // should be 'on-first-retry'
+    trace: 'on-first-retry', // Capture traces only for retried failures
   },
   // only chromium is actually run today; firefox/webkit are commented out
   projects: [
@@ -17,3 +17,5 @@ export default defineConfig({
     // { name: 'webkit',  use: { ...devices['Desktop Safari'] } },
   ],
 });
+
+
