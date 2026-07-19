@@ -9,6 +9,6 @@ export class LoginPage extends BasePage {
     await this.page.fill(this.username, user);
     await this.page.fill(this.password, pass);
     await this.page.click(this.submitBtn);
-    await this.page.waitForTimeout(3000); // hardcoded wait
+    await this.page.waitForLoadState('networkidle');
   }
 }

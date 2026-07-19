@@ -43,4 +43,6 @@ npm install
 npx playwright install
 cp .env.example .env.qa   # fill in real values (ask SRE)
 npm test
+
+Update README to trigger GitHub Actions.
 ```

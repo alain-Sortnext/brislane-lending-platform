@@ -7,6 +7,6 @@ export class PaymentsPage extends BasePage {
   async makePayment(amount: string) {
     await this.page.fill('#amount', amount);
     await this.page.click('button.pay-now');
-    await this.page.waitForTimeout(3000); // hardcoded wait
+    await this.page.waitForLoadState('networkidle');
   }
 }
