@@ -1,9 +1,9 @@
 name: Playwright CI
-
 on:
   push:
     branches:
       - main
+      - framework-refactor
   pull_request:
 
 jobs:
