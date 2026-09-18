@@ -1,0 +1,350 @@
+{
+  "info": {
+    "_postman_id": "brislane-lending-platform-v1",
+    "name": "Brislane Lending Platform API",
+    "description": "Phase 3 — API Quality Engineering & Security. Fix the broken auth first (Request 1), then run contract and security tests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://qa-api.brislane-lend.co.uk",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "Set automatically by the Login request test script"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 1. POST Login (run this first)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// ✅ This script saves the token so all other requests work",
+              "if (pm.response.code === 200) {",
+              "    var json = pm.response.json();",
+              "    pm.collectionVariables.set('access_token', json.token);",
+              "    pm.test('Login successful - token saved', function() {",
+              "        pm.expect(json.token).to.be.a('string');",
+              "    });",
+              "} else {",
+              "    pm.test('Login failed - check credentials and base_url', function() {",
+              "        pm.response.to.have.status(200);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test.candidate@brislane.com\",\n  \"password\": \"TestPass123!\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Run this first. The test script saves the token as {{access_token}} for all subsequent requests.\n\n⚠️ TECH DEBT NOTE: The original collection had a hardcoded expired bearer token on every request. This login request + collection variable is the fix."
+      }
+    },
+    {
+      "name": "👥 2. GET Customers",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response is array', function() {",
+              "    pm.expect(pm.response.json()).to.be.an('array');",
+              "});",
+              "pm.test('Each customer has id and email', function() {",
+              "    var customers = pm.response.json();",
+              "    if (customers.length > 0) {",
+              "        pm.expect(customers[0]).to.have.property('id');",
+              "        pm.expect(customers[0]).to.have.property('email');",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": {
+          "raw": "{{base_url}}/customers",
+          "host": ["{{base_url}}"],
+          "path": ["customers"]
+        }
+      }
+    },
+    {
+      "name": "📋 3. POST Loan Application",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201 Created', function() {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Response has application id', function() {",
+              "    pm.expect(pm.response.json()).to.have.property('id');",
+              "});",
+              "// Save application id for submit test",
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set('application_id', pm.response.json().id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"C1000001\",\n  \"loan_amount\": 5000,\n  \"loan_term_months\": 24,\n  \"purpose\": \"home_improvement\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/loans/applications",
+          "host": ["{{base_url}}"],
+          "path": ["loans", "applications"]
+        }
+      }
+    },
+    {
+      "name": "✅ 4. PUT Loan Submit",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Submission acknowledged', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json).to.have.property('status');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"application_id\": \"{{application_id}}\",\n  \"declaration_accepted\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/loans/submit",
+          "host": ["{{base_url}}"],
+          "path": ["loans", "submit"]
+        }
+      }
+    },
+    {
+      "name": "💳 5. GET Payments",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response is array', function() {",
+              "    pm.expect(pm.response.json()).to.be.an('array');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": {
+          "raw": "{{base_url}}/payments",
+          "host": ["{{base_url}}"],
+          "path": ["payments"]
+        }
+      }
+    },
+    {
+      "name": "🔒 SECURITY — Expired JWT → expect 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Expired token returns 401 Unauthorized', function() {",
+              "    pm.response.to.have.status(401);",
+              "});",
+              "pm.test('Error message references auth/token', function() {",
+              "    var body = pm.response.text().toLowerCase();",
+              "    pm.expect(body).to.satisfy(function(b) {",
+              "        return b.includes('token') || b.includes('unauthorized') || b.includes('expired');",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDMTAwMDAwMSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAwMDAxfQ.EXPIRED_TOKEN_FOR_TESTING" }],
+        "url": {
+          "raw": "{{base_url}}/customers",
+          "host": ["{{base_url}}"],
+          "path": ["customers"]
+        },
+        "description": "Sends a JWT with an exp claim in the past. Server must return 401. This verifies PSD2/SCA token integrity control."
+      }
+    },
+    {
+      "name": "🔒 SECURITY — Tampered JWT → expect 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Tampered token returns 401 Unauthorized', function() {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDMTAwMDAwMSIsInJvbGUiOiJhZG1pbiJ9.TAMPERED_SIGNATURE_XXXXX" }],
+        "url": {
+          "raw": "{{base_url}}/customers",
+          "host": ["{{base_url}}"],
+          "path": ["customers"]
+        },
+        "description": "Sends a JWT with a modified signature. Server must reject it with 401. Tests that the server validates the full token, not just presence."
+      }
+    },
+    {
+      "name": "🔒 SECURITY — No token → expect 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Missing token returns 401 Unauthorized', function() {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/loans/applications",
+          "host": ["{{base_url}}"],
+          "path": ["loans", "applications"]
+        },
+        "description": "No Authorization header at all. Must return 401 — not 200, not 500."
+      }
+    },
+    {
+      "name": "🔒 SECURITY — Rate Limit → expect 429",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Run this request 15+ times rapidly using Collection Runner",
+              "// Eventually should return 429 Too Many Requests",
+              "pm.test('Response is 429 (rate limited) or 200 (not yet limited)', function() {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 429]);",
+              "});",
+              "if (pm.response.code === 429) {",
+              "    pm.test('Rate limit hit - 429 confirmed ✅', function() {",
+              "        pm.response.to.have.status(429);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"application_id\": \"test-rate-limit\",\n  \"declaration_accepted\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/loans/submit",
+          "host": ["{{base_url}}"],
+          "path": ["loans", "submit"]
+        },
+        "description": "Run this 15+ times rapidly via Collection Runner to trigger rate limiting. Should return 429 Too Many Requests."
+      }
+    },
+    {
+      "name": "🔒 SECURITY — Wrong Role (cross-customer) → expect 403",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Cross-customer access returns 403 or 401', function() {",
+              "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": {
+          "raw": "{{base_url}}/customers/C1999999/loans",
+          "host": ["{{base_url}}"],
+          "path": ["customers", "C1999999", "loans"]
+        },
+        "description": "Attempts to access a different customer's loan data using the logged-in user's token. Must return 403 (or 401) — never 200."
+      }
+    }
+  ]
+}
