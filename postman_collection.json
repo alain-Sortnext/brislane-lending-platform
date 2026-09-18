@@ -52,11 +52,19 @@
       },
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// No pre-request script needed"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
           "listen": "test",
           "script": {
             "exec": [
-              "// \u2705 TECH DEBT FIX \u2014 This script saves the token so all other requests work",
-              "// The original collection had a hardcoded expired token. This is the fix.",
+              "// \u2705 TECH DEBT FIX \u2014 saves the JWT token so all other requests work",
               "pm.collectionVariables.set('access_token', pm.response.json().token);",
               "pm.test('Login successful - token saved', function() {",
               "    pm.response.to.have.status(200);",
