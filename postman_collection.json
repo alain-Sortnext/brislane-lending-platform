@@ -8,7 +8,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "https://qa-api.brislane-lend.co.uk",
+      "value": "https://brislane-lending-platform.vercel.app",
       "type": "string"
     },
     {
