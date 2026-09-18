@@ -166,7 +166,7 @@
       ],
       "request": {
         "method": "GET",
-        "header": [{"key": "Authorization", "value": "Bearer PASTE_AN_EXPIRED_JWT_HERE"}],
+        "header": [{"key": "Authorization", "value": "INSERT_EXPIRED_TOKEN"}],
         "url": {
           "raw": "{{base_url}}/customers",
           "host": ["{{base_url}}"],
@@ -190,7 +190,7 @@
       ],
       "request": {
         "method": "GET",
-        "header": [{"key": "Authorization", "value": "Bearer PASTE_A_TAMPERED_JWT_HERE"}],
+        "header": [{"key": "Authorization", "value": "INSERT_TAMPERED_TOKEN"}],
         "url": {
           "raw": "{{base_url}}/customers",
           "host": ["{{base_url}}"],
