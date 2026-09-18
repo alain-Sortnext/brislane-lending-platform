@@ -48,8 +48,25 @@
             "login"
           ]
         },
-        "description": "TECH DEBT FIX \u2014 Add this test script to the Tests tab:\n\npm.collectionVariables.set('access_token', pm.response.json().token);\npm.test('Login successful', function() {\n    pm.response.to.have.status(200);\n});\n\nThis saves the token so all other requests work automatically."
-      }
+        "description": "## Your fix for the broken collection\n\nThe original inherited collection had a hardcoded expired bearer token on every request.\nAll requests failed with 401 before any testing could begin.\n\n### Fix applied (already in the Scripts tab above):\n\n```javascript\npm.collectionVariables.set('access_token', pm.response.json().token);\npm.test('Login successful - token saved', function() {\n    pm.response.to.have.status(200);\n    pm.expect(pm.response.json().token).to.be.a('string');\n});\n```\n\n### What this does:\n1. Sends a POST to /auth/login with valid credentials\n2. Saves the returned JWT to the collection variable `{{access_token}}`\n3. All other requests automatically use `Bearer {{access_token}}`\n\n### Run this request FIRST before any other request."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// \u2705 TECH DEBT FIX \u2014 This script saves the token so all other requests work",
+              "// The original collection had a hardcoded expired token. This is the fix.",
+              "pm.collectionVariables.set('access_token', pm.response.json().token);",
+              "pm.test('Login successful - token saved', function() {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().token).to.be.a('string');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
     },
     {
       "name": "\ud83d\udc65 GET Customers",
