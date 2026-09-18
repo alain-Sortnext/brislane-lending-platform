@@ -52,15 +52,6 @@
       },
       "event": [
         {
-          "listen": "prerequest",
-          "script": {
-            "exec": [
-              "// No pre-request script needed"
-            ],
-            "type": "text/javascript"
-          }
-        },
-        {
           "listen": "test",
           "script": {
             "exec": [
