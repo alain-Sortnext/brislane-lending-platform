@@ -1,0 +1,63 @@
+{
+  "info": {
+    "name": "Brislane API Mock Responses",
+    "description": "Mock response definitions for Postman Mock Server"
+  },
+  "responses": [
+    {
+      "name": "POST /auth/login - success",
+      "originalRequest": {
+        "method": "POST",
+        "url": "/auth/login"
+      },
+      "status": "OK",
+      "code": 200,
+      "header": [{"key": "Content-Type", "value": "application/json"}],
+      "body": "{\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDMTAwMDAwMSIsImVtYWlsIjoidGVzdC5jYW5kaWRhdGVAYnJpc2xhbmUuY29tIiwicm9sZSI6ImN1c3RvbWVyIiwiaWF0IjoxNzE3MDAwMDAwLCJleHAiOjE3MTcwMDM2MDB9.mock_valid_signature\", \"expires_in\": 3600, \"token_type\": \"Bearer\"}"
+    },
+    {
+      "name": "GET /customers - success",
+      "originalRequest": {
+        "method": "GET",
+        "url": "/customers"
+      },
+      "status": "OK",
+      "code": 200,
+      "header": [{"key": "Content-Type", "value": "application/json"}],
+      "body": "[{\"id\": \"C1000001\", \"email\": \"john.smith@example.com\", \"first_name\": \"John\", \"last_name\": \"Smith\", \"status\": \"active\", \"created_at\": \"2026-01-15T10:00:00Z\"}, {\"id\": \"C1000002\", \"email\": \"sarah.jones@example.com\", \"first_name\": \"Sarah\", \"last_name\": \"Jones\", \"status\": \"active\", \"created_at\": \"2026-02-20T14:30:00Z\"}]"
+    },
+    {
+      "name": "POST /loans/applications - success",
+      "originalRequest": {
+        "method": "POST",
+        "url": "/loans/applications"
+      },
+      "status": "Created",
+      "code": 201,
+      "header": [{"key": "Content-Type", "value": "application/json"}],
+      "body": "{\"id\": \"LA-2026-00847\", \"customer_id\": \"C1000001\", \"loan_amount\": 5000, \"loan_term_months\": 24, \"purpose\": \"home_improvement\", \"status\": \"draft\", \"created_at\": \"2026-09-18T09:00:00Z\"}"
+    },
+    {
+      "name": "PUT /loans/submit - success",
+      "originalRequest": {
+        "method": "PUT",
+        "url": "/loans/submit"
+      },
+      "status": "OK",
+      "code": 200,
+      "header": [{"key": "Content-Type", "value": "application/json"}],
+      "body": "{\"application_id\": \"LA-2026-00847\", \"status\": \"submitted\", \"submitted_at\": \"2026-09-18T09:05:00Z\", \"reference\": \"BRL-2026-00847\", \"message\": \"Application submitted successfully. Decision expected within 2 hours.\"}"
+    },
+    {
+      "name": "GET /payments - success",
+      "originalRequest": {
+        "method": "GET",
+        "url": "/payments"
+      },
+      "status": "OK",
+      "code": 200,
+      "header": [{"key": "Content-Type", "value": "application/json"}],
+      "body": "[{\"id\": \"PAY-001\", \"loan_id\": \"LA-2026-00847\", \"amount\": 231.50, \"due_date\": \"2026-10-01\", \"status\": \"pending\"}, {\"id\": \"PAY-002\", \"loan_id\": \"LA-2026-00847\", \"amount\": 231.50, \"due_date\": \"2026-11-01\", \"status\": \"pending\"}]"
+    }
+  ]
+}
