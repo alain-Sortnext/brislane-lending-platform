@@ -5,21 +5,20 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  // retries hide our flakiness instead of fixing it
   // Phase 6 task: retries should be 0 locally, 2 in CI only
-  retries: 2,
+  retries: process.env.CI ? 2 : 0,
   timeout: 60000,
-  reporter: 'list',
+  reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL || 'https://brislane-lending-platform.vercel.app',
-    trace: 'off', // Phase 6 task: should be 'on-first-retry'
+    trace: 'on-first-retry',
   },
-  // only chromium is actually run today; firefox/webkit are commented out
-  // Phase 7 task: uncomment firefox and webkit, add mobile viewport
   projects: [
+    // Phase 7 task: uncomment firefox, webkit and mobile
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    // { name: 'webkit',  use: { ...devices['Desktop Safari'] } },
-    // { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+    // { name: 'firefox',      use: { ...devices['Desktop Firefox'] } },
+    // { name: 'webkit',       use: { ...devices['Desktop Safari'] } },
+    // { name: 'mobile-chrome',use: { ...devices['Pixel 5'] } },
+    // { name: 'tablet-safari',use: { ...devices['iPad (gen 7)'] } },
   ],
 });
