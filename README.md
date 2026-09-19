@@ -68,6 +68,47 @@ brislane-lending-platform/
 
 ## Phase-by-Phase Guide
 
+### Phase 1 — Onboarding & Tool Setup
+
+**All tools needed for this simulation:**
+
+| Tool | Purpose | Setup |
+|------|---------|-------|
+| Jira Cloud | Test cases + defects | [atlassian.com/software/jira/free](https://www.atlassian.com/software/jira/free) |
+| GitHub | Version control + CI/CD | [github.com/signup](https://github.com/signup) |
+| Playwright | Automation framework | `npm install` + `npx playwright install` |
+| Postman | API testing | [postman.com/downloads](https://www.postman.com/downloads/) |
+| Neon | PostgreSQL database | [neon.tech](https://neon.tech) |
+| Miro | RCA board | [miro.com/signup](https://miro.com/signup/) |
+| Power BI / Google Sheets | Release dashboard | [powerbi.microsoft.com](https://powerbi.microsoft.com) |
+
+**Data room** (all data files + Tom's handover notes):
+`https://alain-sortnext.github.io/brislane-lending-platform/`
+
+---
+
+### Phase 2 — Test Strategy & Test Design
+
+**Jira project setup:**
+1. Create a Jira Cloud project named `Brislane PLC — Keystone`
+2. Note your project key (e.g. `BRK`, `BRIS`) — you need it for all issue references
+3. Create minimum 60 test cases across these types: functional, negative, boundary, integration, accessibility, exploratory, regression
+4. Export as CSV if needed for evidence
+
+**Key data to inform your risk matrix:**
+- Loan completion rate dropped from 82.0% → 64.1% at Week 9 (from brislane_primary_data.csv)
+- Submit stage is where applications are lost (filter `status=CR_DEC` vs `status=SUBMITTED`)
+- Support tickets spike from Week 9 onwards with session/logout mentions
+
+**Release criteria to use (from company brief):**
+- Loan completion rate ≥ 90%
+- Automated test pass rate > 95%
+- Open critical defects = 0
+- API failure rate < 2%
+- Defect leakage < 10%
+
+---
+
 ### Phase 3 — API Testing (Postman)
 
 **Import the collection:**
