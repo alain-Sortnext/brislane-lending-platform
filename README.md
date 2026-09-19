@@ -1,46 +1,221 @@
-# brislane-lending-platform
+# Brislane Lending Platform — Starter Repo
 
-E2E + API quality automation for **Brislane Lend** (Project Keystone).
+> **Project Keystone** — Senior Quality Engineer simulation starter framework.
+> This repo contains deliberate tech debt. Your job is to find it, fix it, and build on top of it.
 
-> ⚠️ **Inherited, partially working, and flaky.** This is a real starting point, not a clean template.
-> It carries known technical debt on purpose. Your job (Phases 6–7) is to audit and refactor it.
+---
 
-## Stack
-- Playwright + TypeScript (UI + API)
-- @axe-core/playwright (accessibility — not yet integrated)
-- GitHub Actions CI (currently **red**)
+## Quick Start — Do This First
 
-## Structure
-```
-src/pages/         Page Objects (weak — raw locators, duplicated selectors)
-tests/loan/        Loan journey specs (some flaky, submit spec skipped)
-tests/auth/        Login spec (assertion passes for the wrong reason)
-api/               API specs (no status/contract assertions, expired hardcoded token)
-fixtures/          Mostly missing — no shared auth fixture
-utils/             Duplicate + unused helpers
-test-data/         Seed data (one legacy script is deprecated)
-.github/workflows/ CI pipeline (fails — browser install step is commented out)
+### Step 1 — Fork this repo
+1. Click **Fork** (top right on GitHub)
+2. Click **Create fork**
+3. You now have your own copy at `https://github.com/YOUR-USERNAME/brislane-lending-platform`
+
+> ⚠️ **Fork, don't clone the original.** You need your own fork to raise Pull Requests (Phase 6), commit automation (Phase 7), and trigger GitHub Actions (Phase 8).
+
+### Step 2 — Clone your fork
+```bash
+git clone https://github.com/YOUR-USERNAME/brislane-lending-platform.git
+cd brislane-lending-platform
 ```
 
-## Known issues (the work)
-- Hardcoded `waitForTimeout` waits throughout → flakiness
-- Duplicate selectors across `LoginPage` / `PaymentsPage`
-- Broken assertion in `tests/auth/login.spec.ts`
-- `tests/loan/submit.spec.ts.skip` — skipped; intermittent **401 at submit**
-- No shared auth fixture (every test logs in via UI)
-- Weak Page Object design; dead code (`OldUploadPage.ts`, `utils/logger.ts`)
-- Duplicate utilities (`utils/date.ts` vs `utils/dateHelper.ts`)
-- CI is failing; no quality gates
-- No DEV/QA/UAT env management (`.env.example` only)
-
-## The open question
-Submit failures climbed after the **AUTH-SVC 2.4.0** deploy (~8 Jun 2026). Suspected token-expiry
-on the long application form — never proven. Cross-reference the data room before you trust any theory.
-
-## Run
+### Step 3 — Install dependencies
 ```bash
 npm install
-npx playwright install
-cp .env.example .env.qa   # fill in real values (ask SRE)
-npm test
 ```
+
+### Step 4 — Install Playwright browsers
+```bash
+npx playwright install
+```
+
+### Step 5 — Enable GitHub Actions on your fork
+1. Go to your fork on GitHub
+2. Click the **Actions** tab
+3. Click **I understand my workflows, go ahead and enable them**
+
+---
+
+## Repo Structure
+
+```
+brislane-lending-platform/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # ⚠️ BROKEN — fix in Phase 8
+├── api/
+│   └── postman_collection.json # Phase 3 — import this into Postman
+├── database/
+│   ├── schema.sql              # Phase 4 — run this first in Neon
+│   ├── seed.sql                # Phase 4 — run this second
+│   └── validation_queries.sql  # Phase 4 — use these for your submission
+├── fixtures/
+│   └── auth.fixture.ts         # ⚠️ MISSING — add in Phase 6
+├── mock-api/
+│   └── server.js               # Live mock API (deployed on Vercel)
+├── src/
+│   └── pages/                  # Page Objects — ⚠️ tech debt to fix in Phase 6
+├── tests/
+│   ├── auth/
+│   └── loan/
+├── utils/                      # ⚠️ duplicate utils — fix in Phase 6
+├── .env.example                # Environment variable template
+└── index.html                  # Data room (GitHub Pages)
+```
+
+---
+
+## Phase-by-Phase Guide
+
+### Phase 3 — API Testing (Postman)
+
+**Import the collection:**
+```
+https://raw.githubusercontent.com/alain-Sortnext/brislane-lending-platform/main/api/postman_collection.json
+```
+Or drag `api/postman_collection.json` from your cloned repo into Postman.
+
+**Live API base URL** (already set in collection):
+```
+https://brislane-lending-platform.vercel.app
+```
+
+**Steps:**
+1. Import the collection into Postman
+2. Run **🔐 1. POST Login** first — saves your token automatically
+3. Run the 5 contract tests in order
+4. Run the 5 security tests (SEC-1 to SEC-5)
+5. Open `brislane_operational_report.csv` from the data room
+6. Filter for `endpoint = /loans/submit`, weeks from `2026-06-08` onwards
+7. Calculate: `sum(token_exp) / sum(fail_total)` — this is your key finding
+
+---
+
+### Phase 4 — Database Testing (Neon PostgreSQL)
+
+**Setup (free, no credit card):**
+1. Go to [neon.tech](https://neon.tech) and sign up
+2. Create a project named `brislane-qa`
+3. Open the **SQL Editor** in your Neon dashboard
+4. Run `database/schema.sql` — creates all 5 tables
+5. Run `database/seed.sql` — populates test data
+6. Run `database/validation_queries.sql` — your Phase 4 submission queries
+
+**What to look for:**
+- `LA-TEST-00005` has a **missing audit event** (regulatory gap — this is intentional)
+- `LA-TEST-00004` has a **missing fraud check** (async lag — also intentional)
+
+**Recommended SQL clients:**
+- Neon SQL Editor (in browser — easiest)
+- [TablePlus](https://tableplus.com) (free tier, Mac/Windows)
+- [DBeaver](https://dbeaver.io) (free, all platforms)
+- `psql` in terminal
+
+---
+
+### Phase 6 — Framework Engineering (Playwright)
+
+**What's broken in this repo (find them all):**
+1. `waitForTimeout` hardcoded in multiple page objects
+2. Duplicate selectors across LoginPage and PaymentsPage
+3. Broken assertion in `tests/auth/login.spec.ts`
+4. `tests/loan/submit.spec.ts.skip` — entire spec skipped
+5. No auth fixture — every test logs in via UI
+6. `src/pages/OldUploadPage.ts` — dead code
+7. `utils/logger.ts` — imported nowhere
+8. `utils/date.ts` AND `utils/dateHelper.ts` — duplicate utility
+9. No environment management (DEV/QA/UAT)
+10. `.github/workflows/ci.yml` — browser install step commented out
+11. No retry logic configured
+
+**Your branch:**
+```bash
+git checkout -b phase-6-framework-refactor
+```
+
+**storageState setup** (replaces UI login per test):
+```typescript
+// Run once to save auth state
+await page.goto('https://brislane-lending-platform.vercel.app/auth/login');
+await context.storageState({ path: 'auth.json' });
+```
+
+---
+
+### Phase 7 — Automation Engineering
+
+**What to automate:**
+Use Playwright's API testing capabilities to automate the loan journey against the mock API:
+```typescript
+const response = await request.post(`${process.env.BASE_URL}/loans/applications`, {
+  headers: { Authorization: `Bearer ${token}` },
+  data: { customer_id: 'C1TEST001', loan_amount: 5000, loan_term_months: 24 }
+});
+```
+
+**For accessibility testing** — run axe-core against the data room:
+```typescript
+await page.goto('https://alain-sortnext.github.io/brislane-lending-platform/');
+await injectAxe(page);
+await checkA11y(page);
+```
+
+**Cross-browser and viewport** — configure in `playwright.config.ts`:
+```typescript
+projects: [
+  { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+  { name: 'webkit',   use: { ...devices['Desktop Safari'] } },
+  { name: 'mobile',   use: { ...devices['Pixel 5'] } },
+]
+```
+
+---
+
+### Phase 8 — CI/CD
+
+**The fix** — open `.github/workflows/ci.yml` and uncomment:
+```yaml
+- run: npx playwright install --with-deps
+```
+
+**Enable Actions on your fork** before pushing:
+- Fork → Actions tab → Enable workflows
+
+**Your workflow run URL** (evidence):
+```
+https://github.com/YOUR-USERNAME/brislane-lending-platform/actions/runs/[number]
+```
+
+---
+
+### Phase 9 — Release Dashboard
+
+**quality-metrics.xlsx** — create a spreadsheet with these columns:
+
+| Metric | Current Value | Target | RAG Status |
+|--------|--------------|--------|------------|
+| Automated pass rate | (from your Phase 7/8 run) | > 95% | 🔴/🟡/🟢 |
+| Defect density | (defects ÷ features tested) | TBD | |
+| Defect leakage | (prod defects ÷ total defects × 100) | < 10% | |
+| Automation coverage | (automated ÷ total cases × 100) | Measured | |
+| Defect reopen rate | (reopened ÷ closed × 100) | < 5% | |
+| Open critical bugs | (count from Jira) | 0 | |
+| Defects by severity | Crit: / High: / Med: / Low: | | |
+
+**Publish your dashboard:**
+- Power BI: Publish → Power BI Service → Get shareable link
+- Google Sheets: Share → Anyone with link → Copy link
+
+---
+
+## Data Room
+All data files and Tom's handover notes:
+`https://alain-sortnext.github.io/brislane-lending-platform/`
+
+## Live Mock API
+`https://brislane-lending-platform.vercel.app`
+
+## Support
+If you are stuck, check the phase instructions in the simulation first, then the relevant section of this README.
