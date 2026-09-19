@@ -314,23 +314,29 @@ https://github.com/YOUR-USERNAME/brislane-lending-platform/actions/runs/[number]
 
 ---
 
-### Phase 9 — Release Dashboard
+### Phase 9 — Release Board & Quality Leadership
 
-**quality-metrics.xlsx** — create a spreadsheet with these columns:
+**Full guide:** See `phase-9/quality-metrics-template.md` in this repo.
 
-| Metric | Current Value | Target | RAG Status |
-|--------|--------------|--------|------------|
-| Automated pass rate | (from your Phase 7/8 run) | > 95% | 🔴/🟡/🟢 |
-| Defect density | (defects ÷ features tested) | TBD | |
-| Defect leakage | (prod defects ÷ total defects × 100) | < 10% | |
-| Automation coverage | (automated ÷ total cases × 100) | Measured | |
-| Defect reopen rate | (reopened ÷ closed × 100) | < 5% | |
-| Open critical bugs | (count from Jira) | 0 | |
-| Defects by severity | Crit: / High: / Med: / Low: | | |
+**Step 1 — Calculate your 7 metrics:**
+Open `phase-9/quality-metrics-template.md` — it shows exactly how to calculate each metric from your simulation work.
 
-**Publish your dashboard:**
-- Power BI: Publish → Power BI Service → Get shareable link
-- Google Sheets: Share → Anyone with link → Copy link
+**Step 2 — Build your dashboard:**
+- Google Sheets (free, all platforms): copy metrics table → add RAG colours → Share → Anyone with link
+- Power BI Desktop (free, Windows): import xlsx → build cards → Publish to Power BI Service
+
+**Step 3 — Write your Go/No-Go recommendation:**
+- Recommended decision: **NO-GO (conditional)**
+- Primary evidence: 64.1% completion (target 90%), TOKEN_EXP 40.8% of submit failures
+- Conditions: JWT TTL extended + Postman re-test passes + CI > 95%
+- Address all 4 stakeholders by name: Marcus Reed, Priya Nair, David Mensah, Lena Fischer
+
+**Step 4 — Answer 6 STAR interview questions:**
+Every answer must cite at least one Brislane figure. Key figures are in `phase-9/quality-metrics-template.md`
+
+**Your dashboard URL** (evidence for submission):
+- Google Sheets: `https://docs.google.com/spreadsheets/d/[id]/edit?usp=sharing`
+- Power BI: `https://app.powerbi.com/...`
 
 ---
 
