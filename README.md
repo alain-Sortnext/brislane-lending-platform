@@ -209,6 +209,31 @@ test('authenticated request', async ({ authenticatedRequest }) => {
 
 ### Phase 7 — Automation Engineering
 
+**Run your API tests:**
+```bash
+# Run just the API loan journey tests
+npx playwright test --project=api-chromium
+
+# Run just accessibility tests
+npx playwright test --project=accessibility-chromium
+
+# Run both
+npx playwright test --project=api-chromium --project=accessibility-chromium
+```
+
+**Phase 7 task — uncomment cross-browser projects in playwright.config.ts then run:**
+```bash
+# After uncommenting firefox/webkit projects
+npx playwright test --project=api-chromium --project=api-firefox --project=api-webkit
+```
+
+**View your HTML report:**
+```bash
+npx playwright show-report
+```
+
+> ⚠️ Do NOT run `npx playwright test` without specifying a project — it will also run the intentionally broken inherited tests which hit a non-existent URL.
+
 **What to automate:**
 Use Playwright's API testing capabilities to automate the loan journey against the mock API:
 ```typescript
