@@ -114,6 +114,55 @@ https://brislane-lending-platform.vercel.app
 
 ---
 
+### Phase 5 — Defect Discovery, RCA & Performance Investigation
+
+**What to log as Jira defects (minimum 15):**
+
+You need defects from ALL phases — not just Phase 5. Go back through your previous work and log everything you found:
+
+| Source | What to log | Suggested severity |
+|--------|-------------|-------------------|
+| Phase 3 Postman | TOKEN_EXP causing 40.8% of submit failures | Critical |
+| Phase 3 Postman | Rate limiting not enforced on /loans/submit | High |
+| Phase 3 Postman | Session timeout behaviour not documented | Medium |
+| Phase 4 Database | LA-TEST-00005 missing funded audit event (FCA regulatory gap) | Critical |
+| Phase 4 Database | LA-TEST-00004 missing fraud check (async lag) | High |
+| Phase 6 Framework | waitForTimeout hardcoded in LoginPage.ts | High |
+| Phase 6 Framework | Duplicate selectors across LoginPage and PaymentsPage | Medium |
+| Phase 6 Framework | Broken assertion in login.spec.ts | High |
+| Phase 6 Framework | submit.spec.ts.skip — entire journey skipped | Critical |
+| Phase 6 Framework | No auth fixture — UI re-login per test | High |
+| Phase 6 Framework | OldUploadPage.ts dead code | Low |
+| Phase 6 Framework | logger.ts unused import | Low |
+| Phase 6 Framework | date.ts and dateHelper.ts duplicate | Low |
+| Phase 6 Framework | CI browser install step commented out | High |
+| Phase 7 Accessibility | Any WCAG violations found by axe-core | Medium/High |
+
+**For the RCA report — the evidence chain:**
+1. Open `brislane_primary_data.csv` → completion drops Week 9 at SUBMIT stage
+2. Open `brislane_secondary_data.csv` → filter submission tickets → look for "logged out" / "session" in descriptions
+3. Open `brislane_operational_report.csv` → filter `endpoint=/loans/submit`, weeks from `2026-06-08` → calculate `sum(token_exp)/sum(fail_total)` = ~40.8%
+4. Note the `deploy_ref` column for Week 9 → AUTH-SVC 2.4.0 on 2026-06-08
+
+**For the Miro RCA board:**
+Create a board named `Brislane RCA — Keystone` with these sections:
+- Surface Symptom → Funnel data showing 64.1% completion
+- Misleading indicator → VALID_422 (17%) — NOT the root cause
+- Evidence chain → API log TOKEN_EXP 40.8% post-deploy
+- Deploy correlation → AUTH-SVC 2.4.0 on 2026-06-08
+- Root cause conclusion → one sentence
+- Fix recommendation → extend JWT TTL or add token refresh
+
+**For DevTools performance investigation:**
+1. Open Chrome
+2. Go to `https://alain-sortnext.github.io/brislane-lending-platform/`
+3. Open DevTools → Network tab
+4. Reload the page and observe waterfall
+5. Note: TTFB, total load time, any large resources
+6. Screenshot the waterfall and include in your submission
+
+---
+
 ### Phase 6 — Framework Engineering (Playwright)
 
 **What's broken in this repo (find them all):**
@@ -135,11 +184,26 @@ git checkout -b phase-6-framework-refactor
 ```
 
 **storageState setup** (replaces UI login per test):
+
+The repo includes `global-setup.ts` and `fixtures/auth.fixture.ts` — already built for you.
+
+**Phase 6 task:** Wire them up:
+
+1. Open `playwright.config.ts`
+2. Uncomment this line:
 ```typescript
-// Run once to save auth state
-await page.goto('https://brislane-lending-platform.vercel.app/auth/login');
-await context.storageState({ path: 'auth.json' });
+globalSetup: './global-setup.ts',
 ```
+3. Now use the auth fixture in your tests instead of UI login:
+```typescript
+import { test, expect } from '../fixtures/auth.fixture';
+
+test('authenticated request', async ({ authenticatedRequest }) => {
+  const response = await authenticatedRequest.get('/customers');
+  expect(response.status()).toBe(200);
+});
+```
+4. Run `npx playwright test` — global-setup logs in once, saves `auth.json`, all tests use it
 
 ---
 

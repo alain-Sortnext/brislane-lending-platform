@@ -9,6 +9,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   timeout: 60000,
   reporter: [['list'], ['html', { open: 'never' }]],
+
+  // Phase 6 task: add globalSetup to save auth token before all tests
+  // globalSetup: './global-setup.ts',
+
   use: {
     baseURL: process.env.BASE_URL || 'https://brislane-lending-platform.vercel.app',
     trace: 'on-first-retry',
