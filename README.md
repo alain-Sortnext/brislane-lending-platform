@@ -237,17 +237,77 @@ projects: [
 
 ---
 
-### Phase 8 — CI/CD
+### Phase 8 — CI/CD & Quality Gates
 
-**The fix** — open `.github/workflows/ci.yml` and uncomment:
+**Step 1 — Enable GitHub Actions on your fork:**
+1. Go to your fork on GitHub
+2. Click the **Actions** tab
+3. Click **I understand my workflows, go ahead and enable them**
+
+**Step 2 — Fix the broken workflow:**
+
+Open `.github/workflows/ci.yml`. You'll see this broken line:
 ```yaml
-- run: npx playwright install --with-deps
+# BUG: browsers are never installed, so the run fails.
+# - run: npx playwright install --with-deps
 ```
 
-**Enable Actions on your fork** before pushing:
-- Fork → Actions tab → Enable workflows
+Your fixed workflow should look like this:
+```yaml
+name: CI
 
-**Your workflow run URL** (evidence):
+on: [push, pull_request]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run tests
+        run: npm test
+        env:
+          BASE_URL: https://brislane-lending-platform.vercel.app
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+```
+
+**Step 3 — Define your quality gates:**
+
+Add a quality gates section to your submission documenting these thresholds:
+
+| Gate | Threshold | How enforced |
+|------|-----------|-------------|
+| Critical defects | 0 | Check Jira before deploy |
+| Automated pass rate | > 95% | From Playwright HTML report |
+| API failure rate | < 2% | From operational report CSV |
+
+**Step 4 — Push and get your run URL:**
+```bash
+git add .github/workflows/ci.yml
+git commit -m "fix: add missing browser install step to CI pipeline"
+git push origin main
+```
+
+Then go to your fork → **Actions** tab → click the running workflow → copy the URL.
+
+**Your workflow run URL** (evidence for submission):
 ```
 https://github.com/YOUR-USERNAME/brislane-lending-platform/actions/runs/[number]
 ```
