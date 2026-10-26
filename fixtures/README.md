@@ -1,8 +1,5 @@
-# Fixtures
+# Authentication fixture
 
-NOT DOCUMENTED / mostly missing.
+Use `test` and `expect` from `fixtures/auth.fixture.ts` for authenticated tests. The fixture obtains a session through the configured auth API and reuses it within a worker; tests do not log in through the UI. The login route, token response path, and token storage mechanism are configurable because the real application contract must be confirmed before certification.
 
-There is no shared authentication fixture. Every test logs in through the UI from scratch,
-which is slow and — relevantly — means tokens are minted fresh per test, so the submit
-token-expiry problem doesn't reproduce reliably in automation. Building a proper
-storageState / auth fixture is a Phase 6 job.
+Set `TEST_ENV=dev|qa|uat`, the matching `<ENV>_BASE_URL`, `<ENV>_TEST_USER_EMAIL` and `<ENV>_TEST_USER_PASSWORD`. Supply credentials via an approved secret manager or GitHub Environment secrets. Never commit tokens, auth state, local `.env` files, or customer PII.

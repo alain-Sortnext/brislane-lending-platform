@@ -1,60 +1,77 @@
-import { test as base, request } from '@playwright/test';
-import path from 'path';
-import fs from 'fs';
+import { test as base, expect, type APIRequestContext, type BrowserContext } from "@playwright/test";
+import { environment } from "../config/environments";
+import { retryTransient } from "../utils/retry";
 
-// Phase 6 — Auth Fixture
-// Replaces UI re-login per test with a shared storageState
-// 
-// TECH DEBT THIS FIXES:
-// Before: every test called login.login() via the UI — slow, flaky, mints fresh JWT per test
-// After: single API login saves token to auth.json — all tests share it
-//
-// HOW IT WORKS:
-// 1. global-setup.ts runs once before all tests — calls POST /auth/login
-// 2. Saves the response token to auth.json (gitignored)
-// 3. This fixture loads auth.json into every test's context
-// 4. Tests never touch the login UI
+type Cookie = Awaited<ReturnType<APIRequestContext["storageState"]>>["cookies"][number];
+type AuthSession = { token?: string; cookies: Cookie[] };
+type WorkerFixtures = { authSession: AuthSession; authToken: string };
+type TestFixtures = { authenticatedRequest: APIRequestContext };
 
-const AUTH_FILE = path.join(__dirname, '../auth.json');
-const BASE_URL = process.env.BASE_URL || 'https://brislane-lending-platform.vercel.app';
-
-// Type for our extended fixtures
-type AuthFixtures = {
-  authenticatedRequest: Awaited<ReturnType<typeof request.newContext>>;
-  accessToken: string;
-};
-
-export const test = base.extend<AuthFixtures>({
-  // Provides an authenticated request context
-  authenticatedRequest: async ({}, use) => {
-    // Read token from auth.json (saved by global-setup.ts)
-    let token = '';
-    if (fs.existsSync(AUTH_FILE)) {
-      const authData = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'));
-      token = authData.token || '';
-    }
-
-    const context = await request.newContext({
-      baseURL: BASE_URL,
-      extraHTTPHeaders: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+export const test = base.extend<TestFixtures, WorkerFixtures>({
+  // One API login per worker; every test in that worker reuses this auth session.
+  authSession: [async ({ playwright }, use) => {
+    const api = await playwright.request.newContext({ baseURL: environment.apiBaseURL });
+    try {
+      const response = await retryTransient(async () => {
+        const result = await api.post(environment.loginPath, {
+          data: { email: environment.email, password: environment.password },
+          headers: { accept: "application/json", "content-type": "application/json" },
+          timeout: 15_000,
+        });
+        if (result.status() >= 500) throw new Error(`Transient auth-service HTTP ${result.status()}`);
+        return result;
+      }, environment.authRetries, "API login");
+      if (!response.ok()) throw new Error(`API login failed with HTTP ${response.status()}; response body suppressed`);
+      const body: unknown = await response.json();
+      const tokenValue = readPath(body, environment.tokenJsonPath);
+      const token = typeof tokenValue === "string" && tokenValue.length ? tokenValue : undefined;
+      const state = await api.storageState();
+      if (environment.tokenStorage !== "cookie" && !token) {
+        throw new Error(`Login response did not contain a token at configured path '${environment.tokenJsonPath}'`);
       }
+      if (environment.tokenStorage === "cookie" && state.cookies.length === 0) {
+        throw new Error("Cookie auth selected, but the login API issued no cookies; confirm the auth contract.");
+      }
+      await use({ token, cookies: state.cookies });
+    } finally { await api.dispose(); }
+  }, { scope: "worker" }],
+  authToken: [async ({ authSession }, use) => {
+    if (!authSession.token) throw new Error("This environment is configured for cookie authentication, not bearer tokens.");
+    await use(authSession.token);
+  }, { scope: "worker" }],
+  authenticatedRequest: async ({ playwright, authSession }, use) => {
+    const headers = authSession.token ? { Authorization: `Bearer ${authSession.token}` } : {};
+    const api = await playwright.request.newContext({
+      baseURL: environment.apiBaseURL,
+      extraHTTPHeaders: headers,
+      storageState: { cookies: authSession.cookies, origins: [] },
     });
-
-    await use(context);
-    await context.dispose();
+    try { await use(api); } finally { await api.dispose(); }
   },
-
-  // Provides just the token string
-  accessToken: async ({}, use) => {
-    let token = '';
-    if (fs.existsSync(AUTH_FILE)) {
-      const authData = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'));
-      token = authData.token || '';
+  context: async ({ browser, authSession }, use) => {
+    const origin = new URL(environment.baseURL).origin;
+    const localStorage = environment.tokenStorage === "localStorage" && authSession.token
+      ? [{ name: environment.tokenStorageKey, value: authSession.token }]
+      : [];
+    const context: BrowserContext = await browser.newContext({
+      baseURL: environment.baseURL,
+      // Playwright storageState primes cookies and localStorage before each page is created.
+      storageState: { cookies: authSession.cookies, origins: localStorage.length ? [{ origin, localStorage }] : [] },
+    });
+    if (environment.tokenStorage === "cookie") {
+      await context.addCookies(authSession.cookies);
+    } else if (environment.tokenStorage === "sessionStorage") {
+      const token = authSession.token!;
+      const key = environment.tokenStorageKey;
+      await context.addInitScript(({ key, token }) => window.sessionStorage.setItem(key, token), { key, token });
     }
-    await use(token);
-  }
+    await use(context);
+    await context.close();
+  },
 });
+export { expect };
 
-export { expect } from '@playwright/test';
+function readPath(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) =>
+    current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined, value);
+}

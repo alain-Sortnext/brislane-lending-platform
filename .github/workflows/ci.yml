@@ -1,15 +1,86 @@
-name: CI
-on: [push, pull_request]
+name: Playwright quality gate
+
+on:
+  pull_request:
+    paths:
+      - "config/**"
+      - "fixtures/**"
+      - "src/pages/**"
+      - "tests/**"
+      - "utils/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/ci.yml"
+      - "docs/architecture/**"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Authorised non-production environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - uat
+
+permissions:
+  contents: read
+
 jobs:
-  e2e:
+  static-checks:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      # BUG: browsers are never installed, so the run fails.
-      # - run: npx playwright install --with-deps
-      - run: npm test
-      # no report publish, no quality gates configured
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run typecheck
+
+  e2e:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_environment }}
+    env:
+      TEST_ENV: ${{ inputs.target_environment }}
+      DEV_BASE_URL: ${{ vars.DEV_BASE_URL }}
+      DEV_API_BASE_URL: ${{ vars.DEV_API_BASE_URL }}
+      QA_BASE_URL: ${{ vars.QA_BASE_URL }}
+      QA_API_BASE_URL: ${{ vars.QA_API_BASE_URL }}
+      UAT_BASE_URL: ${{ vars.UAT_BASE_URL }}
+      UAT_API_BASE_URL: ${{ vars.UAT_API_BASE_URL }}
+      DEV_TEST_USER_EMAIL: ${{ secrets.DEV_TEST_USER_EMAIL }}
+      DEV_TEST_USER_PASSWORD: ${{ secrets.DEV_TEST_USER_PASSWORD }}
+      QA_TEST_USER_EMAIL: ${{ secrets.QA_TEST_USER_EMAIL }}
+      QA_TEST_USER_PASSWORD: ${{ secrets.QA_TEST_USER_PASSWORD }}
+      UAT_TEST_USER_EMAIL: ${{ secrets.UAT_TEST_USER_EMAIL }}
+      UAT_TEST_USER_PASSWORD: ${{ secrets.UAT_TEST_USER_PASSWORD }}
+      AUTH_LOGIN_PATH: ${{ vars.AUTH_LOGIN_PATH }}
+      AUTH_TOKEN_JSON_PATH: ${{ vars.AUTH_TOKEN_JSON_PATH }}
+      AUTH_TOKEN_STORAGE: ${{ vars.AUTH_TOKEN_STORAGE }}
+      AUTH_TOKEN_STORAGE_KEY: ${{ vars.AUTH_TOKEN_STORAGE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: TypeScript check
+        run: npm run typecheck
+      - name: Run tests
+        run: npm test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-${{ inputs.target_environment }}-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

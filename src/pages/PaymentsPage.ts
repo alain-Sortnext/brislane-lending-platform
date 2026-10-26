@@ -1,12 +1,16 @@
-import { BasePage } from './BasePage';
+import { expect } from "@playwright/test";
+import { BasePage } from "./BasePage";
+
 export class PaymentsPage extends BasePage {
-  // DUPLICATE selectors copy-pasted from LoginPage (should be shared)
-  username = '#username';
-  password = '#password';
-  submitBtn = 'button.login-submit';
-  async makePayment(amount: string) {
-    await this.page.fill('#amount', amount);
-    await this.page.click('button.pay-now');
-    await this.page.waitForTimeout(3000); // hardcoded wait
+  private get amountField() { return this.page.locator("#amount"); }
+  private get payNowButton() { return this.page.getByRole("button", { name: /pay now/i }); }
+  private get paymentConfirmation() { return this.page.getByRole("status"); }
+
+  async makePayment(amount: string): Promise<void> {
+    await this.amountField.fill(amount);
+    await this.payNowButton.click();
+  }
+  async expectPaymentConfirmed(): Promise<void> {
+    await expect(this.paymentConfirmation).toContainText(/payment|scheduled|success/i);
   }
 }

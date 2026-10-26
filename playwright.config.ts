@@ -1,68 +1,30 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
+import { environment } from "./config/environments";
 
-// ============================================================
-// Brislane Lending Platform — Playwright Config
-// ============================================================
-//
-// PHASE 6 TASKS (fix these):
-// 1. Uncomment globalSetup below
-// 2. Wire DEV/QA/UAT as separate projects with env vars
-// 3. Change retries to: process.env.CI ? 2 : 0
-// 4. Change trace to: 'on-first-retry'
-//
-// PHASE 7 TASKS (uncomment these):
-// 1. Uncomment firefox, webkit, mobile projects below
-//
-// PHASE 8 TASKS (fix these):
-// 1. Fix .github/workflows/ci.yml — add missing browser install step
-// ============================================================
+const ci = Boolean(process.env.CI);
+const target = environment.name;
 
 export default defineConfig({
-
-  // Phase 6 task: uncomment this line
-  // globalSetup: './global-setup.ts',
-
-  // Phase 6 task: retries should be 0 locally, 2 in CI only
-  retries: 2,
-  timeout: 60000,
-  reporter: [['list'], ['html', { open: 'never' }]],
-
+  testDir: "./tests",
+  fullyParallel: true,
+  forbidOnly: ci,
+  retries: ci ? 2 : 0,
+  workers: ci ? 2 : undefined,
+  timeout: 30_000,
+  expect: { timeout: 7_500 },
+  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }], ["junit", { outputFile: "test-results/junit.xml" }]],
   use: {
-    baseURL: process.env.BASE_URL || 'https://brislane-lending-platform.vercel.app',
-    trace: 'off', // Phase 6 task: change to 'on-first-retry'
+    baseURL: environment.baseURL,
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
+    actionTimeout: 10_000,
+    navigationTimeout: 15_000,
   },
-
   projects: [
-    // ── PHASE 7 — API Tests (run these first) ──────────────
-    {
-      name: 'api-chromium',
-      testDir: './tests/api',
-      use: { ...devices['Desktop Chrome'] }
-    },
-
-    // ── PHASE 7 — Accessibility Tests ──────────────────────
-    {
-      name: 'accessibility-chromium',
-      testDir: './tests/accessibility',
-      use: { ...devices['Desktop Chrome'] }
-    },
-
-    // ── PHASE 7 TASK: uncomment these for cross-browser ────
-    // { name: 'api-firefox',           testDir: './tests/api',           use: { ...devices['Desktop Firefox'] } },
-    // { name: 'api-webkit',            testDir: './tests/api',           use: { ...devices['Desktop Safari'] } },
-    // { name: 'api-mobile',            testDir: './tests/api',           use: { ...devices['Pixel 5'] } },
-    // { name: 'accessibility-firefox', testDir: './tests/accessibility', use: { ...devices['Desktop Firefox'] } },
-    // { name: 'accessibility-webkit',  testDir: './tests/accessibility', use: { ...devices['Desktop Safari'] } },
-
-    // ── INHERITED (broken — tech debt to fix in Phase 6) ───
-    // These hit qa.brislane.example which does not exist
-    // They are intentionally broken as tech debt for you to discover
-    // Do NOT fix them by changing the URL — fix them by refactoring
-    // the page objects to work against the real mock API
-    {
-      name: 'inherited-broken',
-      testDir: './tests/auth',
-      use: { ...devices['Desktop Chrome'] }
-    },
+    { name: `${target}-api-chromium`, testDir: "./tests/api", use: { ...devices["Desktop Chrome"] } },
+    { name: `${target}-chromium`, testDir: "./tests", testIgnore: "**/api/**", use: { ...devices["Desktop Chrome"] } },
+    { name: `${target}-firefox`, testDir: "./tests", testIgnore: "**/api/**", use: { ...devices["Desktop Firefox"] } },
+    { name: `${target}-webkit`, testDir: "./tests", testIgnore: "**/api/**", use: { ...devices["Desktop Safari"] } },
   ],
 });
